@@ -12,8 +12,8 @@ from sys import exit
 import asyncio
 import threading
 
-from bots.rabbit_handler import RabbitHandler
-from common.rabbit_comms import publish, publish_action, consume, publish_input_card, get_input, send_prompt, send_to_bot, publish_system_message
+from bot_handler import RabbitHandler
+from bot_comms import publish, publish_action, consume, publish_input_card, get_input, send_prompt, send_to_bot, publish_system_message
 #from bots.langchain_todo import TaskBot
 #from bots.langchain_search import SearchBot
 

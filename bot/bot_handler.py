@@ -1,21 +1,19 @@
 import traceback
-import ai_config
+import re
+import json
+import bot_config
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
 from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 from langchain.input import print_text
 from langchain.schema import AgentAction, AgentFinish, LLMResult
-from common.utils import generate_table
+
 # import pika
-import re
-import json
-import traceback
+
 #import config
 #from bots.utils import encode_message, decode_message
-from common.rabbit_comms import publish, publish_action, consume, publish_actions
+from bot_comms import send_to_user
 #from bots.langchain_assistant import generate_commands
 
 
@@ -129,12 +127,12 @@ class RabbitHandler(BaseCallbackHandler):
                     # Extract text part without JSON string
                     text_without_json = text_content.split('```')[0].strip()
                     text_without_prefixes = text_without_json.replace('Thought: ','').replace('Action:', '').replace('\n','')
-                    if ai_config.VERBOSE:
+                    if bot_config.VERBOSE:
                         """Turn off"""
                         #publish(f"VERBOSE: {text_without_prefixes}")
                 
                 if output_content:
-                    publish(f"{output_content}")
+                    send_to_user(f"{output_content}")
                     #buttons = [("Creating an Email", f"Create an email with the following: {output_content}"),("Creating a Task", f"Create a task with the following: {output_content}"),("Creating a Meeting", f"Create a meeting to discuss the following: {output_content}")]
                     #buttons = generate_commands(output_content)
                     #feedback = f"""{output_content}. Is there anything else I can do?"""
