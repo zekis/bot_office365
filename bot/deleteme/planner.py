@@ -1,5 +1,5 @@
 import traceback
-import ai_config
+import bot_config
 
 
 #from flask import request
@@ -13,9 +13,9 @@ import time
 from pydantic import BaseModel, Field
 from datetime import datetime, date, time, timezone, timedelta
 from typing import Any, Dict, Optional, Type
-from bots.rabbit_handler import RabbitHandler
-from common.rabbit_comms import consume, publish, publish_action, publish_actions, publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_bot
-from common.utils import tool_description, tool_error
+from bot_handler import RabbitHandler
+from bot_comms import consume, publish, publish_action, publish_actions, publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_bot
+from bot_utils import tool_description, tool_error
 
 from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain import ConversationChain, LLMChain, PromptTemplate

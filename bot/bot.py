@@ -14,19 +14,22 @@ from bot_main import aiBot
 
 
 from bot_comms import send_to_user
-
+logger = bot_logging.logging.getLogger('BotInstance') 
+logger.addHandler(bot_logging.file_handler)
 
 async def task_scheduler(bot):
     #publish("Let me check to see if I have any scheduled tasks due today.")
     while True:
+        logger.info(f"Checking Tasks")
         bot.process_task_schedule()
         await asyncio.sleep(bot_config.Todo_PollingIntervalSeconds)
 
 async def email_scheduler(bot):
     #publish("Let me check to see if I have any scheduled tasks due today.")
     while True:
+        logger.info(f"Checking Emails")
         bot.process_email_schedule()
-        await asyncio.sleep(bot_config.Todo_PollingIntervalSeconds / 10)
+        await asyncio.sleep(bot_config.Todo_PollingIntervalSeconds)
 
 async def ai_response(bot):
     
@@ -36,16 +39,15 @@ async def ai_response(bot):
     #publish_actions("How can I help you today?", buttons)
     while True:
         #model_selector()
-        bot.model_response()
+        bot.process_messages()
         await asyncio.sleep(0.5)
         #await asyncio.Event().wait()
     
 async def main():
     #Create master bot
     bot = aiBot()
-    #await bot.async_init()
-    logger = bot_logging.logging.getLogger('BotInstance') 
-    logger.addHandler(bot_logging.file_handler)
+    
+    
     logger.info(f"Init Bot Instance")
 
     

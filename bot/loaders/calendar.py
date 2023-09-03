@@ -1,20 +1,25 @@
 import traceback
-import ai_config
+import bot_config
+import bot_logging
 
 from datetime import datetime
 from typing import Any, Dict, Optional, Type
 
-from common.rabbit_comms import publish, publish_event_card, publish_list
-from common.utils import tool_description, tool_error
+from bot_comms import publish_event_card, publish_list
+from bot_utils import tool_description, tool_error
 
 from O365 import Account
 
 from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain.tools import BaseTool
 
+
+tool_logger = bot_logging.logging.getLogger('ToolLogger')
+tool_logger.addHandler(bot_logging.file_handler)
+
 def authenticate():
-    credentials = (ai_config.APP_ID, ai_config.APP_PASSWORD)
-    account = Account(credentials,auth_flow_type='credentials',tenant_id=ai_config.TENANT_ID, main_resource=ai_config.OFFICE_USER)
+    credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
+    account = Account(credentials,auth_flow_type='credentials',tenant_id=bot_config.TENANT_ID, main_resource=bot_config.OFFICE_USER)
     account.authenticate()
     return account
 

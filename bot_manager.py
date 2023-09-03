@@ -1,5 +1,6 @@
 import subprocess
 import bot_config
+import datetime
 from user_manager import UserManager
 import bot_logging
 from bot_comms import from_dispatcher, send_to_dispatcher, send_to_user, clear_queue, send_to_instance, send_credentials_to_instance
@@ -14,11 +15,11 @@ class BotManager:
         bot_logger.info("Bot manager initilised")
         self.user_processes = {}
 
-    def handle_instance(self, prompt, user_id):
+    def handle_instance(self, user_id):
         bot_instance_channel = bot_config.BOT_ID + user_id
 
         if user_id in self.user_processes and self.user_processes[user_id].poll() is None:
-            #bot_logger.info(f"Bot is already running for user {user_id}", user_id)
+            bot_logger.info(f"Bot is already running for user {user_id}")
             """do nothing"""
             return
         else:
@@ -28,17 +29,52 @@ class BotManager:
             self.user_processes[user_id] = process
             return
 
+    def stop_all_processes(self):
+        """Stop all running bots."""
+        for process in self.user_processes.items():
+            if process.poll() is None:  # Check if the process is running
+                bot_logger.warn(f"Stopping bots")
+                process.terminate()
+                process.wait()
+                bot_logger.warn(f"Bots stopped")
+
+        # Clear the dictionary after stopping all processes
+        self.user_processes.clear()
+
+    """stop the bot"""
+    def stop_instance(self, user_id):
+        bot_logger.warn(f"Stopping bot.")
+        if user_id in self.user_processes:
+            self.user_processes[user_id].terminate()
+            self.user_processes[user_id].wait()
+            del self.user_processes[user_id]
+            bot_logger.warn(f"Bot stopped.")
+        else:
+            bot_logger.warn(f"No bot to stop.")
+
+
 
 
 botManager = BotManager()
 userManager = UserManager(bot_config.DATA_DIR)
+last_server_contact = datetime.datetime.now()
+server_contact = False
 
 async def process_server_message():
+    # Declare server_contact and last_server_contact as global
+    global server_contact, last_server_contact
+
+
     "process server messages"
     message = from_dispatcher()
+    current_time = datetime.datetime.now()
+
+
     if message:
+        
 
         bot_logger.debug(f"{message}")
+        
 
         bot_id = message.get('bot_id')
         command = message.get('command')
@@ -48,25 +84,51 @@ async def process_server_message():
         prompt = message.get('prompt')
         credentials = message.get('credentials')
         
+        
 
-        # if command:
-        #     if command == "registered":
-        #         "Do nothing for now"
-        #     else:
-        #         bot_logger.info(f"{message}")
-        # user_id = message.get('user_id')
-        # prompt = message.get('prompt')
+        if command:
+            if command == "registered":
+                if not server_contact:
+                    bot_logger.info(f"Server connection restored")
+                server_contact = True
+                last_server_contact = current_time
+                bot_config.HEARTBEAT_SEC = bot_config.HEARTBEAT_NORMAL_SEC
+
         if prompt:
-            botManager.handle_instance(prompt, user_id)
-            bot_instance_channel = bot_config.BOT_ID + user_id
-            send_to_instance(bot_instance_channel, user_id, prompt)
-            send_credentials_to_instance(bot_instance_channel, user_id, credentials)
+            if prompt == 'stop':
+                send_to_user(user_id, f"stopping bot instance...")
+                botManager.stop_instance(user_id)
+                return False
+            if prompt == 'start':
+                send_to_user(user_id, f"starting bot instance...")
+                botManager.handle_instance(user_id)
+                send_credentials_to_instance(user_id, credentials)
+                return False
+            if prompt == 'restart':
+                send_to_user(user_id, f"stopping bot instance...")
+                botManager.stop_instance(user_id)
+                
+                send_to_user(user_id, f"starting bot instance...")
+                botManager.handle_instance(user_id)
+                send_credentials_to_instance(user_id, credentials)
+                return False
 
-            #does the user have a bot_instance
-            #spin one up
-            # send_to_user(bot_config.DISPATCHER_CHANNEL_ID, bot_config.BOT_ID, user_id, prompt)
-            # send_to_dispatcher(bot_config.DISPATCHER_CHANNEL_ID, bot_config.BOT_ID, 'end', user_id)
 
+            send_to_user(user_id, f"thinking...")
+            botManager.handle_instance(user_id)
+            #always send credentials first
+            send_credentials_to_instance(user_id, credentials)
+            send_to_instance(user_id, prompt)
+
+           
+    if (current_time - last_server_contact).total_seconds() > float(bot_config.SERVER_TIMOUT_SEC) and server_contact == True:
+        bot_logger.warn(f"Server connection lost")
+        server_contact = False
+        #register every second until True (Server clears messages on startup)
+        bot_config.HEARTBEAT_SEC = bot_config.HEARTBEAT_RETRY_SEC
+        #kill all bots
+        botManager.stop_all_processes()
+                
 
 
 

@@ -12,19 +12,16 @@ BOT_DESCRIPTION = ""
 APP_ID = os.getenv("MicrosoftAppId")
 APP_PASSWORD = os.getenv("MicrosoftAppPassword")
 
-Todo_PollingIntervalSeconds = float(os.getenv("Todo_PollingIntervalSeconds",10.0))
-Todo_BotsTaskFolder = os.getenv("Todo_BotsTaskFolder")
+Todo_PollingIntervalSeconds = float(os.getenv("Todo_PollingIntervalSeconds",60.0))
+Todo_BotsTaskFolder = 'Bot Tasks'
 
 DATA_DIR = "data"
 
 #These are set on startup
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-#unique to this bot session, set from command line
-TENANT_ID = os.getenv("tenant_id")
-USER_ID = ""
+OPENAI_API_KEY = ""
+TENANT_ID = ""
 FRIENDLY_NAME = ""
-OFFICE_USER = os.getenv("OFFICE_USER")
+OFFICE_USER = ""
 
 RESET_CONFIG = False
 VERBOSE = True

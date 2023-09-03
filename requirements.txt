@@ -2,3 +2,8 @@ python-dotenv
 pika
 openai
 langchain
+python-dateutil
+markdownify
+nltk
+botbuilder-integration-aiohttp>=4.14.0
+O365

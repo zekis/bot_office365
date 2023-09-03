@@ -34,7 +34,7 @@ async def main_loop():
 async def heartbeat_loop():
     #logger.info("Start message processing")
     while True:
-        await asyncio.sleep(30)
+        await asyncio.sleep(float(bot_config.HEARTBEAT_SEC))
         register_self()
         
 

@@ -1,5 +1,5 @@
 import traceback
-import ai_config
+import bot_config
 
 from typing import Any, Dict, Optional, Type
 

@@ -1,3 +1,35 @@
-2023-09-02 17:18:37,684 - INFO - BotInstance(__init__) - Init Bot Instance
-2023-09-02 17:18:37,684 - INFO - BotInstance(main) - Init Bot Instance
-2023-09-02 17:18:37,707 - INFO - BotComms(send_to_user) - CHANNEL: botmanager - 29:1kNk1xhOlKowj2hlJ21KkmrovoT2xcy4C9nlg7luTKSvrA_GuLISVlGJQGbOirJYq4jDzEUcyspjy_hbD08EPcQ - check my emails plz
+2023-09-03 23:14:06,283 - INFO - BotInstance(__init__) - Init Bot Instance
+2023-09-03 23:14:06,284 - INFO - BotInstance(main) - Init Bot Instance
+2023-09-03 23:14:06,295 - INFO - BotInstance(get_credential) - Fetching credential for: openai_api
+2023-09-03 23:14:06,296 - INFO - BotInstance(get_credential) - Fetching credential for: tenant_id
+2023-09-03 23:14:06,296 - INFO - BotInstance(get_credential) - Fetching credential for: user_name
+2023-09-03 23:14:06,297 - INFO - BotInstance(get_credential) - Fetching credential for: email_address
+2023-09-03 23:14:06,310 - INFO - BotInstance(task_scheduler) - Checking Tasks
+2023-09-03 23:14:07,876 - INFO - BotInstance(email_scheduler) - Checking Emails
+2023-09-03 23:14:13,784 - INFO - BotComms(publish_email_card) - CHANNEL: botmanager - 29:1kNk1xhOlKowj2hlJ21KkmrovoT2xcy4C9nlg7luTKSvrA_GuLISVlGJQGbOirJYq4jDzEUcyspjy_hbD08EPcQ - Email - Subject: Re: VPN problems
+2023-09-03 23:14:16,338 - INFO - ToolLogger(task_reply_or_ignore) - Given the following email to Zeke Tierney , identify which assistant should be able to assist. return only the assistant name
+        
+        email: ```
+To: zeke.tierney@sgcontrols.com.au, 
+CC: 
+BCC: 
+From: zeke.tierney@gmail.com
+Subject: Re: VPN problems
+Date: 2023-09-03 22:35:28
+Summary: The email is a response to a previous email regarding VPN problems. The sender, Zeke Tierney, thanks the recipient for their response and mentions that the error message states that his password is incorrect. The email also includes a previous email from Zeke Tierney, sent earlier in the day, where he briefly mentions that the VPN is showing him an error and asks for help.
+```
+
+
+        assistants: CREATE_TASK description: creates a reminder for Zeke Tierney to action at later. 
+        REPLY_TO_EMAIL description: generates a helpfull response with instructions and helpfull tips to resolve the issue. 
+        ARCHIVE description: email doesnt require any action from Zeke Tierney and can be ignored.
+2023-09-03 23:14:17,127 - INFO - BotComms(send_to_me) - CHANNEL: office36529:1kNk1xhOlKowj2hlJ21KkmrovoT2xcy4C9nlg7luTKSvrA_GuLISVlGJQGbOirJYq4jDzEUcyspjy_hbD08EPcQ - 29:1kNk1xhOlKowj2hlJ21KkmrovoT2xcy4C9nlg7luTKSvrA_GuLISVlGJQGbOirJYq4jDzEUcyspjy_hbD08EPcQ - Please use the REPLY_TO_EMAIL tool using ConverstationID: AAQkAGExNDVmN2RjLTg2ZDQtNDU2NC1iNzgyLWNjMzliOTQzMzBkOQAQAB5WAs6BY0FBr4kwKiAdRuk= to draft a reply in HTML format from 'Chad the AI Assistant' on behalf of Zeke Tierney and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'. The email is to include helpfull tips to the sender of the following email: ```
+To: zeke.tierney@sgcontrols.com.au, 
+CC: 
+BCC: 
+From: zeke.tierney@gmail.com
+Subject: Re: VPN problems
+Date: 2023-09-03 22:35:28
+Summary: The email is a response to a previous email regarding VPN problems. The sender, Zeke Tierney, thanks the recipient for their response and mentions that the error message states that his password is incorrect. The email also includes a previous email from Zeke Tierney, sent earlier in the day, where he briefly mentions that the VPN is showing him an error and asks for help.
+```
+

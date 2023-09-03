@@ -1,22 +1,25 @@
 import traceback
-import ai_config
+import bot_config
+import bot_logging
 
 from datetime import datetime, timedelta
 from dateutil import parser
 from typing import Any, Dict, Optional, Type
 
-from common.rabbit_comms import publish_todo_card, publish_list, publish_folder_list
-from common.utils import tool_description, tool_error
-from common.utils import validate_response, parse_input, sanitize_subject
+from bot_comms import publish_todo_card, publish_list, publish_folder_list, send_to_user
+from bot_utils import tool_description, tool_error, validate_response, parse_input, sanitize_subject
 
 from O365 import Account
 
 from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain.tools import BaseTool
 
+tool_logger = bot_logging.logging.getLogger('ToolLogger')
+tool_logger.addHandler(bot_logging.file_handler)
+
 def authenticate():
-    credentials = (ai_config.APP_ID, ai_config.APP_PASSWORD)
-    account = Account(credentials,auth_flow_type='credentials',tenant_id=ai_config.TENANT_ID, main_resource=ai_config.OFFICE_USER)
+    credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
+    account = Account(credentials,auth_flow_type='credentials',tenant_id=bot_config.TENANT_ID, main_resource=bot_config.OFFICE_USER)
     account.authenticate()
     return account
 
@@ -81,7 +84,7 @@ def scheduler_get_task_due_today(folder):
         folder = todo.get_folder(folder_name=folder)
     except:
         #Later I will call the AI to create the folder
-        return "Need to create the AutoCHAD task folder"
+        return None
     query = folder.new_query()
     query = query.on_attribute('status').unequal('completed')
     todo_list = folder.get_tasks(query)
@@ -153,7 +156,7 @@ class MSGetTasks(BaseTool):
                     ai_summary = ai_summary + " - Subject: " + task.subject + ", Due " + due_date + "\n"
                     title = task.subject + " - " + due_date
                     print(title)
-                    value = "Please use the GET_TASK_DETAIL tool using folder_name: " + folder_name + " and task_id: " + task.task_id
+                    value = "Please use the office365 assistant and GET_TASK_DETAIL tool using folder_name: " + folder_name + " and task_id: " + task.task_id
                     human_summary.append((title, value))
                 
                 if publish.lower() == "true":
@@ -289,7 +292,7 @@ class MSCreateTaskFolder(BaseTool):
             new_folder = todo.new_folder(folder_name)
             
             if publish.lower() == "true":
-                publish(f"Task Folder {folder_name} Created")
+                send_to_user(f"Task Folder {folder_name} Created")
                 self.return_direct = True
                 return None
             else:
@@ -348,7 +351,7 @@ class MSCreateTask(BaseTool):
     optional_parameters = []
     name = "CREATE_TASK"
     summary = """Useful for when you need to create a task. """
-    parameters.append({"name": "folder_name", "description": "task folder name" })
+    parameters.append({"name": "folder_name", "description": "task folder name " })
     parameters.append({"name": "task_name", "description": "task subject" })
     optional_parameters.append({"name": "due_date", "description": "due_date should be in the format 2023-02-28 for a python datetime.date object" })
     optional_parameters.append({"name": "reminder_date", "description": "due_date should be in the format 2023-02-26 for a python datetime.date object" })
@@ -361,11 +364,21 @@ class MSCreateTask(BaseTool):
             
             account = authenticate()
             todo = account.tasks()
-
+            folder = None
             #get the folder and task
             if not folder_name:
                 folder_name = "Tasks"
-            folder = todo.get_folder(folder_name=folder_name)
+            
+            folders = get_folders()
+            for valid_folder in folders:
+                if valid_folder.name == folder_name:
+                    #found a matching valid folder
+                    folder = todo.get_folder(folder_name=folder_name)
+            
+            if not folder:
+                folder = todo.new_folder(folder_name)
+            
+            
 
             if folder:
                 new_task = folder.new_task(task_name)
@@ -413,7 +426,7 @@ class MSDeleteTask(BaseTool):
             todo_task.delete()
 
             if publish.lower() == "true":
-                publish(f"Task Deleted")
+                send_to_user(f"Task Deleted")
                 self.return_direct = True
                 return None
             else:

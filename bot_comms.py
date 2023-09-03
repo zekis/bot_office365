@@ -133,35 +133,38 @@ def send_to_user(user_id: str, prompt: str):
 
     message_channel.basic_publish(exchange='',routing_key=channel_id,body=message)
 
-def send_to_instance(channel_id: str, user_id: str, prompt: str):
+def send_to_instance(user_id: str, prompt: str):
     "encode and send a message directly to a bot using <channel_id>"
+    bot_instance_channel = bot_config.BOT_ID + user_id
+    
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {prompt}")
+    comms_logger.info(f"CHANNEL: {bot_instance_channel} - {user_id} - {prompt}")
 
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
     message_channel = connection.channel()
 
-    message_channel.queue_declare(queue=channel_id)
+    message_channel.queue_declare(queue=bot_instance_channel)
 
     message = encode_instance_message(user_id, prompt)
 
-    message_channel.basic_publish(exchange='',routing_key=channel_id,body=message)
+    message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
 
-def send_credentials_to_instance(channel_id: str, user_id: str, credentials: list):
+def send_credentials_to_instance(user_id: str, credentials: list):
     "encode and send a message directly to a bot using <channel_id>"
+    bot_instance_channel = bot_config.BOT_ID + user_id
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {credentials}")
+    comms_logger.info(f"CHANNEL: {bot_instance_channel} - {user_id} - {credentials}")
 
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
     message_channel = connection.channel()
 
-    message_channel.queue_declare(queue=channel_id)
+    message_channel.queue_declare(queue=bot_instance_channel)
 
     message = encode_instance_credentials(user_id, credentials)
 
-    message_channel.basic_publish(exchange='',routing_key=channel_id,body=message)
+    message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
 
 
 def clear_queue(channel_id: str):
