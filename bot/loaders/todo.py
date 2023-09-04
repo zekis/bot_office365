@@ -340,7 +340,7 @@ class MSSetTaskComplete(BaseTool):
                 task.save()
 
                 if publish.lower() == "true":
-                    publish_todo_card("Task Complete", task, folder.name)
+                    send_to_user(f"Task Marked as Complete")
                     self.return_direct = True
                     return None
                 else:
@@ -433,15 +433,24 @@ class MSDeleteTask(BaseTool):
     name = "DELETE_TASK"
     summary = """Useful for when you need to delete a task. """
     parameters.append({"name": "task_id", "description": "task id" })
+    parameters.append({"name": "folder_name", "description": "task folder name " })
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
-    def _run(self, task_id, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, task_id, folder_name: str, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
             
-            todo_task = todo.get_task(task_id)
+            account = authenticate()
+            todo = account.tasks()
+
+            #todo_task = todo.get_task(task_id)
+            folder = todo.get_folder(folder_name)
+            if task_id and folder_name:
+                task = get_task_detail_by_id(folder_name,task_id)
+            else:
+                return "Must specify folder_name and task_id"
             
-            todo_task.delete()
+            task.delete()
 
             if publish.lower() == "true":
                 send_to_user(f"Task Deleted")
@@ -449,7 +458,7 @@ class MSDeleteTask(BaseTool):
                 return None
             else:
                 self.return_direct = False
-                return f"Task {task_id} deleted"
+                return f"Task {task.subject} deleted"
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
@@ -465,6 +474,7 @@ class MSUpdateTask(BaseTool):
     name = "UPDATE_TASK"
     summary = """Useful for when you need to update a task. """
     parameters.append({"name": "task_id", "description": "task id" })
+    parameters.append({"name": "folder_name", "description": "task folder name " })
     optional_parameters.append({"name": "task_name", "description": "task subject" })
     optional_parameters.append({"name": "due_date", "description": "due_date should be in the format 2023-02-28 for a python datetime.date object" })
     optional_parameters.append({"name": "reminder_date", "description": "due_date should be in the format 2023-02-26 for a python datetime.date object" })
@@ -472,7 +482,7 @@ class MSUpdateTask(BaseTool):
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
-    def _run(self, task_id: str, task_name: str = None, due_date: str = None, reminder_date: str = None, body: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, task_id: str, folder_name: str, task_name: str = None, due_date: str = None, reminder_date: str = None, body: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
 
             account = authenticate()
@@ -481,8 +491,14 @@ class MSUpdateTask(BaseTool):
             #get the folder and task
             # folder = todo.get_folder(folder_name=folder_name)
             # query = todo.new_query("title").equals(task_name)
-            existing_task = todo.get_task(task_id)
-            folder = todo.get_folder(folder_id)
+            folder = todo.get_folder(folder_name)
+            if task_id and folder_name:
+                existing_task = get_task_detail_by_id(folder_name,task_id)
+            else:
+                return "Must specify folder_name and task_id"
+
+            #existing_task = todo.get_task(task_id)
+            #folder = todo.get_folder(folder_id)
 
             if existing_task:
                 existing_task.subject = task_name
