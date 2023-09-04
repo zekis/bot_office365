@@ -20,14 +20,14 @@ logger.addHandler(bot_logging.file_handler)
 async def task_scheduler(bot):
     #publish("Let me check to see if I have any scheduled tasks due today.")
     while True:
-        logger.info(f"Checking Tasks")
+        logger.debug(f"Checking Tasks")
         bot.process_task_schedule()
         await asyncio.sleep(bot_config.Todo_PollingIntervalSeconds)
 
 async def email_scheduler(bot):
     #publish("Let me check to see if I have any scheduled tasks due today.")
     while True:
-        logger.info(f"Checking Emails")
+        logger.debug(f"Checking Emails")
         bot.process_email_schedule()
         await asyncio.sleep(bot_config.Todo_PollingIntervalSeconds)
 

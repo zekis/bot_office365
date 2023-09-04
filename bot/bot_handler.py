@@ -2,6 +2,7 @@ import traceback
 import re
 import json
 import bot_config
+import bot_logging
 
 from langchain.callbacks.base import BaseCallbackHandler
 from typing import Any, Dict, List, Optional, Union
@@ -10,6 +11,10 @@ from langchain.input import print_text
 from langchain.schema import AgentAction, AgentFinish, LLMResult
 
 # import pika
+handler_logger = bot_logging.logging.getLogger('BotHandler')
+handler_logger.addHandler(bot_logging.file_handler)
+"This module handles sending and recieving between server and bots"
+
 
 #import config
 #from bots.utils import encode_message, decode_message
@@ -90,13 +95,13 @@ class RabbitHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         try:
-            print(f"on_agent_finish Callback {finish}")
+            handler_logger.info(f"on_agent_finish Callback {finish}")
             #print(f"on_agent_finish Callback {finish.log}")
             message = finish
             if message:
                 #message = encode_message(config.USER_ID,'on_agent_finish', message)
                 #self.message_channel.basic_publish(exchange='',routing_key='notify',body=message)
-                print(f"Agent Finish: {message}")
+                handler_logger.info(f"Agent Finish: {message}")
         except Exception as e:
             traceback.print_exc()
 
@@ -109,7 +114,7 @@ class RabbitHandler(BaseCallbackHandler):
         **kwargs: Any,
     ) -> Any:
         try:
-            print(f"on_chain_end Callback {outputs}")
+            handler_logger.info(f"on_chain_end Callback {outputs}")
             #response = outputs.get("output")
             #look for output
 
@@ -153,5 +158,5 @@ class RabbitHandler(BaseCallbackHandler):
         if error:
             #message = encode_message(config.USER_ID,'prompt', message)
             #self.message_channel.basic_publish(exchange='',routing_key='notify',body=message)
-            print(f"Chain Error: {error}")
+            handler_logger.info(f"Chain Error: {error}")
             return str(error)

@@ -73,7 +73,7 @@ def send_to_user(prompt: str):
     bot_id = bot_config.BOT_ID
     user_id = bot_config.USER_ID
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {prompt}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {prompt}")
 
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
@@ -91,7 +91,7 @@ def send_to_me(prompt: str):
     bot_instance_channel = bot_config.BOT_ID + bot_config.USER_ID
     
 
-    comms_logger.info(f"CHANNEL: {bot_instance_channel} - {user_id} - {prompt}")
+    comms_logger.debug(f"CHANNEL: {bot_instance_channel} - {user_id} - {prompt}")
 
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 

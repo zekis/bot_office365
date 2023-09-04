@@ -31,6 +31,7 @@ tool_logger = bot_logging.logging.getLogger('ToolLogger')
 tool_logger.addHandler(bot_logging.file_handler)
 
 def authenticate():
+    
     credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
     account = Account(credentials,auth_flow_type='credentials',tenant_id=bot_config.TENANT_ID, main_resource=bot_config.OFFICE_USER)
     account.authenticate()
@@ -38,47 +39,63 @@ def authenticate():
 
 # This function returns a summary of the given email using OpenAI's GPT-3 API.
 def get_email_summary(email, body_soup):
+
+    str_to_address = ""
+    if email.to:
+        for to_address in email.to:
+            str_to_address = str_to_address + to_address.address + ", "
+
+
     try:
         chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-        query = f"""Provide a summary of the email ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
+        query = f"""Provide a summary of the latest message in the email chain, and the the conversation history, into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
+        To: {str_to_address}
         From: {email.sender.address}
         Subject: {email.subject}
         Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}
         Body: {body_soup}"""
 
-        print(f"Function Name: get_email_summary | Query: {query}")
+        tool_logger.info(f"Query: {query}")
         email_response = chat([HumanMessage(content=query)]).content
         return email_response
     except Exception as e:
         traceback.print_exc()
+        tb = traceback.format_exc()
+        tool_logger.error(tb + " \n" + e)
         return f'Error getting email summary - Likely exceeded token limit'
 
 
-def reply_to_email_summary(summary, comments=None, previous_draft=None):
+def reply_to_email_summary(summary, example=None, comments=None, previous_draft=None):
     chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
     query = f"""Given this email summary: {summary}, please create a reasonable email response from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER}.
-    Response is to be HTML formatted and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
+    Response is to be HTML formatted
+
+
     """
+    if example:
+        query += f"Example: {example}"
     if comments:
         query += f"Consider the following comments: {comments}"
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
 
-    print(f"Function Name: reply_to_email_summary | Query: {query}")
+    tool_logger.info(f"Query: {query}")
     email_response = chat([HumanMessage(content=query)]).content
     return email_response
 
-def forward_email_summary(summary, comments=None, previous_draft=None):
+def forward_email_summary(summary, example=None, comments=None, previous_draft=None):
     chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
     query = f"""Given this email summary: {summary}, please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER}.
     Response is to be HTML formatted and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
     """
+    if example:
+        query += f"example: {example}"
     if comments:
         query += f"Consider the following comments: {comments}"
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
 
-    print(f"Function Name: forward_email_summary | Query: {query}")
+    tool_logger.info(f"Query: {query}")
     email_response = chat([HumanMessage(content=query)]).content
     return email_response
 
@@ -92,7 +109,7 @@ def modify_draft(body, comments, previous_draft=None):
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
 
-    print(f"Function Name: modify_draft | Query: {query}")
+    tool_logger.info(f"Query: {query}")
     email_response = chat([HumanMessage(content=query)]).content
     return email_response
 
@@ -102,7 +119,7 @@ def get_conversation_sorted(ConversationID):
     inbox = mailbox.inbox_folder()
 
     query = inbox.new_query().on_attribute("receivedDateTime").greater(datetime(2023, 1, 1)).chain("and").on_attribute('conversationid').equals(ConversationID)
-    print(f"Function Name: get_conversation | Query: {query}")
+    tool_logger.info(f"Query: {query}")
     returned_emails = inbox.get_messages(limit=5,query=query, order_by="receivedDateTime desc")
     
     count = 0
@@ -117,7 +134,7 @@ def get_conversation(ConversationID):
     inbox = mailbox.inbox_folder()
 
     query = inbox.new_query().on_attribute('conversationid').equals(ConversationID)
-    print(f"Function Name: get_conversation | Query: {query}")
+    tool_logger.info(f"Query: {query}")
     returned_emails = inbox.get_messages(limit=1,query=query)
     
     count = 0
@@ -128,7 +145,7 @@ def get_conversation(ConversationID):
 
 # This function takes an `ObjectID` as input and returns the email associated with that ID.
 def get_message(ObjectID):
-    print(f"Function Name: get_message | ObjectID: {ObjectID}")
+    tool_logger.info(f"ObjectID: {ObjectID}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -137,7 +154,7 @@ def get_message(ObjectID):
     return returned_email
 
 def search_emails_return_unique_conv(search_query):
-    print(f"Function Name: search_emails_return_unique_conv | Search Query: {search_query}")
+    tool_logger.info(f"Query: {search_query}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -170,7 +187,7 @@ def search_emails(search_query):
     return None
 
 def create_email_reply(ConversationID, body, save=False):
-    print(f"Function Name: create_email_reply | Conversation ID: {ConversationID} | Body: {body}")
+    tool_logger.info(f"Conversation ID: {ConversationID} | Body: {body}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -189,7 +206,7 @@ def create_email_reply(ConversationID, body, save=False):
     return reply_msg
 
 def create_email_forward(ConversationID, recipient, body, save=False):
-    print(f"Function Name: create_email_forward | Conversation ID: {ConversationID} | Recipient: {recipient} | Body: {body}")
+    tool_logger.info(f"Conversation ID: {ConversationID} | Recipient: {recipient} | Body: {body}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -213,7 +230,7 @@ def create_email_forward(ConversationID, recipient, body, save=False):
 
 
 def draft_email(recipient, subject, body, user_improvements=None, previous_draft=None, save=True):
-    print(f"Function Name: draft_email | Recipient: {recipient} | Subject: {subject}")
+    tool_logger.info(f"Recipient: {recipient} | Subject: {subject}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -276,13 +293,19 @@ def format_email(email):
     for bcc_address in email.bcc:
         str_bcc_address = str_bcc_address + bcc_address.address + ", "
 
+    if email.received is None:
+        received_date = "Not sent"
+    else:
+        received_date = email.received.strftime('%Y-%m-%d %H:%M:%S')
+
+
     email_s = f"""```
 To: {str_to_address}
 CC: {str_cc_address}
 BCC: {str_bcc_address}
 From: {email.sender.address}
 Subject: {email.subject}
-Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}
+Date: {received_date}
 Body: {email.body}
 ```
 """
@@ -302,17 +325,23 @@ def format_email_summary_only(email, summary):
     for bcc_address in email.bcc:
         str_bcc_address = str_bcc_address + bcc_address.address + ", "
 
+    if email.received is None:
+        received_date = "Not sent"
+    else:
+        received_date = email.received.strftime('%Y-%m-%d %H:%M:%S')
+
     email_s = f"""```
 To: {str_to_address}
 CC: {str_cc_address}
 BCC: {str_bcc_address}
 From: {email.sender.address}
 Subject: {email.subject}
-Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}
+Date: {received_date}
 Summary: {summary}
 ```
 """
     return email_s
+
 
 def format_email_header(email):
     header = { 'object_id': email.object_id, 'conversationid': email.conversation_id, 'subject': email.subject, 'from': email.sender.address }
@@ -346,14 +375,135 @@ def review_email(email):
     #publish a task question back to itself
     
     #email.mark_as_read()
-    next_action = task_reply_or_ignore(email, summary)
+    email_type = get_email_type(email, summary)
+    if email_type:
+        send_to_user(f"I have determined that this is a {email_type} email")
+        if email_type == "INTERNAL":
+            intent = get_email_intent(email, summary)
+            #next_action = task_reply_or_ignore(email, summary)
+        elif email_type == "EXTERNAL":
+            intent = get_email_intent(email, summary)
+            #next_action = task_reply_or_ignore(email, summary)
+        else:
+            return
+    else:
+        return
     ai_summary = format_email_summary_only(email, summary)
 
-    if next_action == 'CREATE_TASK':
-        send_to_me(f"Please use the CREATE_TASK tool to create a task for {bot_config.FRIENDLY_NAME} to action the following email: {ai_summary}")
+    str_to_address = email.sender.address
+    send_to_user(f"I have also determined the intent of the email to be a {intent}")
+    task_action_prompt = f"Please use the CREATE_TASK tool to create a task for {bot_config.FRIENDLY_NAME} to action the following email: {ai_summary}"
+    email_action_prompt = f"Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format to {str_to_address} from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} and add a signature from 'Chad the AI Assistant'. The email is to include helpfull tips to the sender of the following email: {ai_summary}"
+    tool_logger.info("task_action_prompt: " + task_action_prompt)
+    tool_logger.info("email_action_prompt: " + email_action_prompt)
+    
+    if "INQUIRY/QUESTION" in intent:
+        """ Emails where the sender is seeking information or clarification on a specific topic. """
+        send_to_user(f"I think the next thing to do would be to create a reminder for this inquiry/question")
+        send_to_me(task_action_prompt)
 
-    if next_action == 'DRAFT_REPLY_TO_EMAIL':
-        send_to_me(f"Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'. The email is to include helpfull tips to the sender of the following email: {ai_summary}")
+
+
+    elif "FEEDBACK/OPINION" in intent:
+        """ Comments or feedback about a product, service, or event. """
+        send_to_user(f"I think I could respond to this feedback/opinion for you")
+        send_to_me(email_action_prompt)
+    
+        # do something
+
+    elif "COMPLAINT/PROBLEM" in intent:
+        """ When something has gone wrong or the sender is dissatisfied. """
+        send_to_user(f"I think I could respond to this complaint/problem for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "REQUEST FOR ASSISTANCE" in intent:
+        """ Support requests or help with a product or service. """
+        send_to_user(f"I think I could respond to this request for assistance for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "ORDER/TRANSACTION" in intent:
+        """ Emails related to the purchase, delivery, or refund of a product or service. """
+        send_to_user(f"I think I could respond to this order/transaction email for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "APPOINTMENT/MEETING" in intent:
+        """ Setting, changing, or canceling a meeting or appointment. """
+        # do something
+
+    elif "THANK YOU/APPRECIATION" in intent:
+        """ Expressions of gratitude or appreciation. """
+        send_to_user(f"I think I could respond to this thankyou/appreciation for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "INTRODUCTION/NETWORKING" in intent:
+        """ Where the sender is introducing themselves or looking to establish a connection. """
+        send_to_user(f"I think I could respond to this introduction/networking email for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "NEWS/UPDATE" in intent:
+        """ Information about new products, services, events, or updates. """
+        # do something
+
+    elif "SUBSCRIPTION" in intent:
+        """ Requests or confirmations about subscribing or unsubscribing from a service or mailing list. """
+        """ Emails where the sender is seeking information or clarification on a specific topic. """
+        send_to_user(f"I think the next thing to do would be to create a reminder about this subscription for you")
+        send_to_me(task_action_prompt)
+
+        # do something
+
+    elif "RECOMMENDATION/REFERRAL" in intent:
+        """ Where someone is recommending a person, product, or service. """
+        send_to_user(f"I think I could respond to this recommendation/referral for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "PROMOTION/ADVERTISEMENT" in intent:
+        """ Unsolicited promotional material or offers. """
+        # do something
+
+    elif "CONFIRMATION" in intent:
+        """ Confirming actions, purchases, sign-ups, or other activities. """
+        send_to_user(f"I think the next thing to do would be to create a reminder about this confirmation for you")
+        send_to_me(task_action_prompt)
+        # do something
+
+    elif "REMINDER" in intent:
+        """ Reminder for events, payments, or other actions. """
+        send_to_user(f"I think the next thing to do would be to create a reminder for you")
+        send_to_me(task_action_prompt)
+        # do something
+
+    elif "LEGAL/OFFICIAL" in intent:
+        """ Communications regarding contracts, official notices, or other legal matters. """
+        """ Emails where the sender is seeking information or clarification on a specific topic. """
+        send_to_user(f"I think the next thing to do would be to create a reminder to respond to this official/legal issue")
+        send_to_me(task_action_prompt)
+        # do something
+
+    elif "SOCIAL/PERSONAL" in intent:
+        """ Informal communications, greetings, or personal updates. """
+        send_to_user(f"I think I could respond to this social/personal email for you")
+        send_to_me(email_action_prompt)
+        # do something
+
+    elif "SPAM" in intent:
+        """ Unwanted or suspicious emails. """
+        # do something
+
+
+    # if next_action == 'CREATE_TASK':
+    #     send_to_user(f"I think the next thing to do would be to create a reminder for you")
+    #     send_to_me(f"Please use the CREATE_TASK tool to create a task for {bot_config.FRIENDLY_NAME} to action the following email: {ai_summary}")
+
+    # if next_action == 'DRAFT_REPLY_TO_EMAIL':
+    #     send_to_user(f"I think I could respond to this email for you")
+    #     send_to_me(f"Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format from 'Chad the AI Assistant' to {str_to_address} on behalf of {bot_config.FRIENDLY_NAME} and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'. The email is to include helpfull tips to the sender of the following email: {ai_summary}")
     
     # if next_action == 'ARCHIVE':
     #     send_to_me(ai_config.USER_ID,"Please use the CREATE_TASK tool to create a task for " + ai_config.FRIENDLY_NAME + " to action the following email: " + ai_summary)
@@ -363,20 +513,23 @@ def task_reply_or_ignore(email, summary):
     #this function uses ai to determine the next course of action for the user
     ai_summary = format_email_summary_only(email, summary)
 
+    str_to_address = ""
+    for to_address in email.to:
+        str_to_address = str_to_address + to_address.address + ", "
+
     try:
         
         llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
         tools = load_tools(["human"], llm=llm)
 
-        available_actions = f"""CREATE_TASK description: creates a reminder for {bot_config.FRIENDLY_NAME} to action at later. 
-        DRAFT_REPLY_TO_EMAIL description: generates a helpfull response with instructions and helpfull tips to resolve the issue. 
-        ARCHIVE description: email doesnt require any action from {bot_config.FRIENDLY_NAME} and can be ignored."""
+        available_actions = f"""name: CREATE_TASK description: if a email reply wont solve the issue, use this tool that creates a reminder for {bot_config.FRIENDLY_NAME} to action at a later date. 
+        name: DRAFT_REPLY_TO_EMAIL description: if more information is needed or we can suggest basic troubleshooting tips and advise, use this too that generates a helpfull response with instructions and helpfull tips to resolve the issue. 
+        name: ARCHIVE description: email doesnt require any action from {bot_config.FRIENDLY_NAME} and can be ignored."""
         
-        prompt = f"""Given the following email to {bot_config.FRIENDLY_NAME} , identify which assistant should be able to assist. return only the assistant name
+        prompt = f"""Given the following email to {bot_config.FRIENDLY_NAME} and reviewing the latest response, identify which action to perform next. return only the action name
+        actions: {available_actions}
         
-        email: {ai_summary}
-
-        assistants: {available_actions}"""
+        email: {ai_summary}"""
         tool_logger.info(prompt)
 
         agent_executor = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs = {
@@ -386,9 +539,129 @@ def task_reply_or_ignore(email, summary):
         return agent_executor.run(input=prompt).upper()
     except Exception as e:
         traceback.print_exc()
+        tb = traceback.format_exc()
+        tool_logger.error(tb + " \n" + e)
         return e
         
-    
+def get_email_type(email, summary):
+    #this function uses ai to determine the next course of action for the user
+    ai_summary = format_email_summary_only(email, summary)
+
+    str_to_address = ""
+    for to_address in email.to:
+        str_to_address = str_to_address + to_address.address + ", "
+
+    try:
+        
+        llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
+        tools = load_tools(["human"], llm=llm)
+
+        available_types = f"""name: DONOTREPLY description: the email has been sent from an address indicating that its from a do not reply address. 
+        name: NEWSLETTER description: the email contains promotional information and or news and does not require a response 
+        name: INTERNAL description: the email has been sent from an internal address on the same domain as {bot_config.OFFICE_USER} 
+        name: EXTERNAL description: the email has been sent from an external address not on the same domain as {bot_config.OFFICE_USER}"""
+        
+        prompt = f"""Given the following email to {bot_config.FRIENDLY_NAME}, its your task to determine if this email is one of the following types,  return only the type name
+        Types: {available_types}
+        
+        email: {ai_summary}"""
+        tool_logger.debug(prompt)
+
+        agent_executor = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs = {
+                "input_variables": ["input", "agent_scratchpad"]
+            })
+
+        return agent_executor.run(input=prompt).upper()
+    except Exception as e:
+        traceback.print_exc()
+        tb = traceback.format_exc()
+        tool_logger.error(tb + " \n" + e)
+        return e
+
+def get_email_intent(email, summary):
+    #this function uses ai to determine the next course of action for the user
+    ai_summary = format_email_summary_only(email, summary)
+
+    str_to_address = ""
+    for to_address in email.to:
+        str_to_address = str_to_address + to_address.address + ", "
+
+    try:
+        
+        llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
+        tools = load_tools(["human"], llm=llm)
+        available_intents = """
+name: INQUIRY/QUESTION
+description: Emails where the sender is seeking information or clarification on a specific topic.
+
+name: FEEDBACK/OPINION
+description: Comments or feedback about a product, service, or event.
+
+name: COMPLAINT/PROBLEM
+description: When something has gone wrong or the sender is dissatisfied.
+
+name: REQUEST FOR ASSISTANCE
+description: Support requests or help with a product or service.
+
+name: ORDER/TRANSACTION
+description: Emails related to the purchase, delivery, or refund of a product or service.
+
+name: APPOINTMENT/MEETING
+description: Setting, changing, or canceling a meeting or appointment.
+
+name: THANK YOU/APPRECIATION
+description: Expressions of gratitude or appreciation.
+
+name: INTRODUCTION/NETWORKING
+description: Where the sender is introducing themselves or looking to establish a connection.
+
+name: NEWS/UPDATE
+description: Information about new products, services, events, or updates.
+
+name: SUBSCRIPTION
+description: Requests or confirmations about subscribing or unsubscribing from a service or mailing list.
+
+name: RECOMMENDATION/REFERRAL
+description: Where someone is recommending a person, product, or service.
+
+name: PROMOTION/ADVERTISEMENT
+description: Unsolicited promotional material or offers.
+
+name: CONFIRMATION
+description: Confirming actions, purchases, sign-ups, or other activities.
+
+name: REMINDER
+description: Reminder for events, payments, or other actions.
+
+name: LEGAL/OFFICIAL
+description: Communications regarding contracts, official notices, or other legal matters.
+
+name: SOCIAL/PERSONAL
+description: Informal communications, greetings, or personal updates.
+
+name: SPAM
+description: Unwanted or suspicious emails.
+"""
+
+        
+        
+        prompt = f"""Given the following email to {bot_config.FRIENDLY_NAME}, its your task to determine the intent from the list available,  return only the intent name
+        Intents: {available_intents}
+        Ensure to only return only the intent name
+
+        email: {ai_summary}"""
+        tool_logger.debug(prompt)
+
+        agent_executor = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs = {
+                "input_variables": ["input", "agent_scratchpad"]
+            })
+
+        return agent_executor.run(input=prompt).upper()
+    except Exception as e:
+        traceback.print_exc()
+        tb = traceback.format_exc()
+        tool_logger.error(tb + " \n" + e)
+        return e
 
 class MSSearchEmailsId(BaseTool):
     parameters = []
@@ -424,6 +697,8 @@ class MSSearchEmailsId(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -470,6 +745,8 @@ class MSGetEmailDetail(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -493,7 +770,7 @@ class MSDraftEmail(BaseTool):
     def _run(self, recipient: str, subject: str, body: str, user_improvements: str = None, previous_draft: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
             response = draft_email(recipient, subject, body, user_improvements, previous_draft)
-            ai_summary = format_email_summary_only(response, body)
+            ai_summary = format_email(response)
 
             if publish.lower() == "true":
                 publish_draft_card("New Draft Email", response, body, reply=False)
@@ -507,6 +784,8 @@ class MSDraftEmail(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -537,6 +816,8 @@ class MSSendEmail(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -567,6 +848,8 @@ class MSReplyToEmail(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -597,6 +880,8 @@ class MSForwardEmail(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -610,17 +895,18 @@ class MSDraftForwardEmail(BaseTool):
     summary = "useful for when you need to generate a forward email to an existing email chain."
     parameters.append({"name": "ConversationID", "description": "A valid email conversation ID" })
     parameters.append({"name": "recipient", "description": "A valid email address" })
-    optional_parameters.append({"name": "user_improvements", "description": "Direct the draft email and can be used in combination with the previous_draft" })
-    optional_parameters.append({"name": "previous_draft", "description": "To be used with the user_improvements" })
+    optional_parameters.append({"name": "example", "description": "example or template to give to the AI to help generate the new email draft" })
+    optional_parameters.append({"name": "previous_draft", "description": "If available, the previous generated draft attempt may be provided, To be used with the user_improvements" })
+    optional_parameters.append({"name": "previous_draft_improvements", "description": "If a previous draft is provided, this parameter can be used to direct the AI to address issues with the previous draft email" })
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
-    def _run(self, ConversationID: str, recipients: str, user_improvements: str = None, previous_draft: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, ConversationID: str, recipients: str, example: str = None, previous_draft: str = None, previous_draft_improvements: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
             email_chain = get_conversation_sorted(ConversationID)
             summary = get_email_summary(clean_html(email_chain.body))
 
-            email_response = forward_email_summary(summary, user_improvements, previous_draft)
+            email_response = forward_email_summary(summary, example, previous_draft_improvements, previous_draft)
             forward_email = create_email_forward(ConversationID, recipients, email_response, False)
 
             ai_summary = format_email_summary_only(forward_email, email_response)
@@ -636,6 +922,8 @@ class MSDraftForwardEmail(BaseTool):
                 return ai_summary
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -648,16 +936,19 @@ class MSDraftReplyToEmail(BaseTool):
     name = "DRAFT_REPLY_TO_EMAIL"
     summary = """useful for when you need to generate a reply to an existing email chain."""
     parameters.append({"name": "ConversationID", "description": "A valid email conversation ID" })
-    optional_parameters.append({"name": "user_improvements", "description": "Direct the draft email and can be used in combination with the previous_draft" })
-    optional_parameters.append({"name": "previous_draft", "description": "To be used with the user_improvements" })
+    optional_parameters.append({"name": "example", "description": "example or template to give to the AI to help generate the new email draft" })
+    optional_parameters.append({"name": "previous_draft", "description": "If available, the previous generated draft attempt may be provided, To be used with the user_improvements" })
+    optional_parameters.append({"name": "previous_draft_improvements", "description": "If a previous draft is provided, this parameter can be used to direct the AI to address issues with the previous draft email" })
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
-    def _run(self, ConversationID: str, user_improvements: str = None, previous_draft: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, ConversationID: str, example:str = None, previous_draft: str = None, previous_draft_improvements: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
             email_chain = get_conversation_sorted(ConversationID)
             summary = get_email_summary(email_chain, clean_html(email_chain.body))
-            email_response = reply_to_email_summary(summary, user_improvements, previous_draft)
+
+            email_response = reply_to_email_summary(summary, example, previous_draft_improvements, previous_draft)
+
             reply_email = create_email_reply(ConversationID, email_response)
 
             ai_summary = format_email_summary_only(reply_email, email_response)
@@ -673,6 +964,8 @@ class MSDraftReplyToEmail(BaseTool):
 
         except Exception as e:
             traceback.print_exc()
+            tb = traceback.format_exc()
+            tool_logger.error(tb + " \n" + e)
             return tool_error(e, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:

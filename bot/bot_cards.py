@@ -173,7 +173,7 @@ def create_email_card(message,email, summary):
                 "title": "Create Task",
                 "mode": "secondary",
                 "data": {
-                    "acDecision": f"Please use the office365 assistant and its CREATE_TASK tool to create an action for {bot_config.FRIENDLY_NAME} to do based on the email following summary: {summary}"
+                    "acDecision": f"Please use the office365 assistant and its CREATE_TASK tool to create an action for {bot_config.FRIENDLY_NAME} to do based on the email converstation {email.conversation_id} and summary: {summary}"
                 }
                 
             },
@@ -182,7 +182,7 @@ def create_email_card(message,email, summary):
                 "title": "Create Meeting",
                 "mode": "secondary",
                 "data": {
-                    "acDecision": f"Please use the office365 assistant and its CREATE_CALANDER_EVENT tool to create an meeting for {bot_config.FRIENDLY_NAME} to do based on the email summary: {summary}"
+                    "acDecision": f"Please use the office365 assistant and its CREATE_CALANDER_EVENT tool to create an meeting for {bot_config.FRIENDLY_NAME} to do based on the email converstation {email.conversation_id} and summary: {summary}"
                 }
             }
 
@@ -565,7 +565,7 @@ def create_todo_card(message,event):
                     },
                     {
                         "type": "TextBlock",
-                        "text": f"Task Folder: {event.folder}",
+                        "text": f"Task Folder: {event.folder_id}",
                         "weight": "bolder",
                         "wrap": True
                     },
