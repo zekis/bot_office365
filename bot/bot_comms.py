@@ -204,7 +204,7 @@ def publish_list(message,strings_values):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {strings_values}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {strings_values}")
 
 
     #convert string to dict (hopefully our AI has formatted it correctly)
@@ -233,7 +233,7 @@ def publish_folder_list(message,strings_values):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {strings_values}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {strings_values}")
 
     #convert string to dict (hopefully our AI has formatted it correctly)
     try:
@@ -258,7 +258,7 @@ def publish_event_card(message,event):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {event}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {event}")
     
     #convert string to dict (hopefully our AI has formatted it correctly)
     try:
@@ -271,7 +271,7 @@ def publish_event_card(message,event):
 
     message_channel.basic_publish(exchange='',routing_key=channel_id,body=message)
 
-def publish_todo_card(message,task):
+def publish_todo_card(message,task,folder):
     channel_id = bot_config.DISPATCHER_CHANNEL_ID
     bot_id = bot_config.BOT_ID
     user_id = bot_config.USER_ID
@@ -282,11 +282,11 @@ def publish_todo_card(message,task):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {task}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {task}")
 
     #convert string to dict (hopefully our AI has formatted it correctly)
     try:
-        cards = create_todo_card(message,task)
+        cards = create_todo_card(message,task,folder)
     except Exception as e:
         traceback.print_exc()
         cards = None
@@ -306,7 +306,7 @@ def publish_email_card(message,email,summary):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {email}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {email}")
     
     #convert string to dict (hopefully our AI has formatted it correctly)
     try:
@@ -330,7 +330,7 @@ def publish_draft_card(message,email,response, reply=False):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {response}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {response}")
     
     #convert string to dict (hopefully our AI has formatted it correctly)
     try:
@@ -357,7 +357,7 @@ def publish_draft_forward_card(message,email,response):
 
     message_channel.queue_declare(queue=channel_id)
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {message} - {response}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {response}")
     
     #convert string to dict (hopefully our AI has formatted it correctly)
     try:

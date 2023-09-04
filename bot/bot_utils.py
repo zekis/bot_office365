@@ -4,6 +4,7 @@ import re
 import bot_config
 import nltk
 import os
+import bot_logging
 
 from typing import Any, Dict, Optional, Type
 from langchain.text_splitter import CharacterTextSplitter
@@ -22,7 +23,8 @@ text_splitter = CharacterTextSplitter(
     length_function = len,
 )
 
-
+util_logger = bot_logging.logging.getLogger('UtilLogger')
+util_logger.addHandler(bot_logging.file_handler)
 
 def validate_response(string):
     text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=2000, chunk_overlap=0)
@@ -80,13 +82,13 @@ def create_email(recipient,subject,body):
 def generate_whatif_response(text):
     chat = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
     query = f"""given this information, write 2 short paragraph predicting what will happen next, one if everything went well and another if everything went wrong: {text}"""
-    print(f"Function Name: generate_response | Text: {text}")
+    util_logger.info(f"Function Name: generate_response | Text: {text}")
     return chat([HumanMessage(content=query)]).content
 
 def generate_plan_response(text):
     chat = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
     query = f"""given this information, what would you recommend: {text}"""
-    print(f"Function Name: generate_response | Text: {text}")
+    util_logger.info(f"Function Name: generate_response | Text: {text}")
     return chat([HumanMessage(content=query)]).content
 
 def generate_response(text):
@@ -99,14 +101,14 @@ def generate_response(text):
 
     
     query = f"""My Calendar: {my_appointments} My tasks: {my_tasks} given this information, please recommend if I should create a task, add to my calander, respond with an email or ignore: {text}"""
-    print(f"Function Name: generate_response | Text: {text}")
+    util_logger.info(f"Function Name: generate_response | Text: {text}")
     return chat([HumanMessage(content=query)]).content
 
 def generate_table(text):
     chat = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo")
     
     query = f"""please convert the following to markdown table:: {text}"""
-    print(f"Function Name: generate_table | Text: {text}")
+    util_logger.info(f"Function Name: generate_table | Text: {text}")
     return chat([HumanMessage(content=query)]).content
 
 nltk.download("punkt")
@@ -131,9 +133,9 @@ def format_user_question(question):
     return question
 
 
-def tool_error(error, tool_description):
-    error_message = f"""Error: {error}, Tool Description: {tool_description}"""
-    print(error_message)
+def tool_error(error, tb, tool_description=None):
+    error_message = f"""Error: {error}, Trace: {tb},  Tool Description: {tool_description},"""
+    util_logger.error(error_message)
     return error_message
 
 def tool_description(tool_name, tool_summary, tool_parameters = [], tool_optional_parameters = []):
@@ -159,6 +161,6 @@ def tool_description(tool_name, tool_summary, tool_parameters = [], tool_optiona
     # Optional Parameters: {str_optional_parameters}\n
     # always use double quotes for strings"""
 
-    desc = f""": {tool_summary}. {tool_instructions}. {str_parameters}, optional {str_optional_parameters}. Always use double quotes for strings"""
+    desc = f""": {tool_summary}. {tool_instructions}. {str_parameters}, optional {str_optional_parameters}. Always use double quotes for strings.  Always escape backslashes by doubling them up. Example Delete the estimate folder in the \\\\\\sgc-fs-01\\\\Estimating\\\\directory."""
     #print(desc)
     return desc

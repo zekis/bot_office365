@@ -48,21 +48,16 @@ def get_email_summary(email, body_soup):
 
     try:
         chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-        query = f"""Provide a summary of the latest message in the email chain, and the the conversation history, into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
-        To: {str_to_address}
-        From: {email.sender.address}
-        Subject: {email.subject}
-        Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}
-        Body: {body_soup}"""
+        query = f"""Provide a abbreviated version of the latest message in the email chain, and the the conversation history, into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
+        To: {str_to_address}, From: {email.sender.address}, Subject: {email.subject}, Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}, Body: {body_soup}"""
 
         tool_logger.info(f"Query: {query}")
         email_response = chat([HumanMessage(content=query)]).content
         return email_response
     except Exception as e:
-        traceback.print_exc()
+        #traceback.print_exc()
         tb = traceback.format_exc()
-        tool_logger.error(tb + " \n" + e)
-        return f'Error getting email summary - Likely exceeded token limit'
+        return tool_error(e, tb)
 
 
 def reply_to_email_summary(summary, example=None, comments=None, previous_draft=None):
@@ -337,7 +332,7 @@ BCC: {str_bcc_address}
 From: {email.sender.address}
 Subject: {email.subject}
 Date: {received_date}
-Summary: {summary}
+Body(Summarised): {summary}
 ```
 """
     return email_s
@@ -360,8 +355,10 @@ def scheduler_check_emails():
                 summary = get_email_summary(email, clean_html(email.body))
                 publish_email_card("Email", email, summary)
                 
-                review_email(email)
-                
+                #Determine Type and Intent of Email
+                review_email(email, summary)
+
+                #Always mark email read, or we end up reviewing the same email forever.
                 email.mark_as_read()
                 
             else:
@@ -369,8 +366,8 @@ def scheduler_check_emails():
                 email.mark_as_read()
     return None
 
-def review_email(email):
-    summary = get_email_summary(email, clean_html(email.body))
+def review_email(email, summary):
+    #summary = get_email_summary(email, clean_html(email.body))
     #publish_email_card("Email", email, summary)
     #publish a task question back to itself
     
@@ -391,11 +388,14 @@ def review_email(email):
     ai_summary = format_email_summary_only(email, summary)
 
     str_to_address = email.sender.address
-    send_to_user(f"I have also determined the intent of the email to be a {intent}")
-    task_action_prompt = f"Please use the CREATE_TASK tool to create a task for {bot_config.FRIENDLY_NAME} to action the following email: {ai_summary}"
-    email_action_prompt = f"Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format to {str_to_address} from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} and add a signature from 'Chad the AI Assistant'. The email is to include helpfull tips to the sender of the following email: {ai_summary}"
-    tool_logger.info("task_action_prompt: " + task_action_prompt)
-    tool_logger.info("email_action_prompt: " + email_action_prompt)
+    send_to_user(f"I have also determined {intent}")
+    link = f"https://outlook.office.com/mail/inbox/id/{email.object_id}"
+
+    task_action_prompt = f"Please use the CREATE_TASK tool to create a task in the 'Tasks' folder with the subject {email.subject}, body to include {summary} and {link}, for {bot_config.FRIENDLY_NAME} to action."
+    email_action_prompt = f"Given this email I just received from {str_to_address}, Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format to {str_to_address} from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} with helpfull tips and add a signature from 'Chad the AI Assistant'. Email Received: {ai_summary}"
+    #tool_logger.info("task_action_prompt: " + task_action_prompt)
+    #tool_logger.info("email_action_prompt: " + email_action_prompt)
+    tool_logger.info(intent)
     
     if "INQUIRY/QUESTION" in intent:
         """ Emails where the sender is seeking information or clarification on a specific topic. """
@@ -497,18 +497,6 @@ def review_email(email):
         # do something
 
 
-    # if next_action == 'CREATE_TASK':
-    #     send_to_user(f"I think the next thing to do would be to create a reminder for you")
-    #     send_to_me(f"Please use the CREATE_TASK tool to create a task for {bot_config.FRIENDLY_NAME} to action the following email: {ai_summary}")
-
-    # if next_action == 'DRAFT_REPLY_TO_EMAIL':
-    #     send_to_user(f"I think I could respond to this email for you")
-    #     send_to_me(f"Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format from 'Chad the AI Assistant' to {str_to_address} on behalf of {bot_config.FRIENDLY_NAME} and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'. The email is to include helpfull tips to the sender of the following email: {ai_summary}")
-    
-    # if next_action == 'ARCHIVE':
-    #     send_to_me(ai_config.USER_ID,"Please use the CREATE_TASK tool to create a task for " + ai_config.FRIENDLY_NAME + " to action the following email: " + ai_summary)
-
-
 def task_reply_or_ignore(email, summary):
     #this function uses ai to determine the next course of action for the user
     ai_summary = format_email_summary_only(email, summary)
@@ -538,10 +526,9 @@ def task_reply_or_ignore(email, summary):
 
         return agent_executor.run(input=prompt).upper()
     except Exception as e:
-        traceback.print_exc()
+        #traceback.print_exc()
         tb = traceback.format_exc()
-        tool_logger.error(tb + " \n" + e)
-        return e
+        return tool_error(e, tb)
         
 def get_email_type(email, summary):
     #this function uses ai to determine the next course of action for the user
@@ -573,10 +560,9 @@ def get_email_type(email, summary):
 
         return agent_executor.run(input=prompt).upper()
     except Exception as e:
-        traceback.print_exc()
+        #traceback.print_exc()
         tb = traceback.format_exc()
-        tool_logger.error(tb + " \n" + e)
-        return e
+        return tool_error(e, tb)
 
 def get_email_intent(email, summary):
     #this function uses ai to determine the next course of action for the user
@@ -658,10 +644,9 @@ description: Unwanted or suspicious emails.
 
         return agent_executor.run(input=prompt).upper()
     except Exception as e:
-        traceback.print_exc()
+        #traceback.print_exc()
         tb = traceback.format_exc()
-        tool_logger.error(tb + " \n" + e)
-        return e
+        return tool_error(e, tb)
 
 class MSSearchEmailsId(BaseTool):
     parameters = []
@@ -696,10 +681,9 @@ class MSSearchEmailsId(BaseTool):
                 return "No emails found"
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -744,10 +728,9 @@ class MSGetEmailDetail(BaseTool):
             return "No emails"
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -783,10 +766,9 @@ class MSDraftEmail(BaseTool):
                 return ai_summary
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -815,10 +797,9 @@ class MSSendEmail(BaseTool):
                 return "AI is not allowed to email directly, A draft email is saved - Please manually send from outlook"
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -847,10 +828,9 @@ class MSReplyToEmail(BaseTool):
                 return "AI is not allowed to email directly, A draft email is saved - Please manually send from outlook"
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -879,10 +859,9 @@ class MSForwardEmail(BaseTool):
                 return "AI is not allowed to email directly, A draft email is saved - Please manually send from outlook"
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -910,7 +889,8 @@ class MSDraftForwardEmail(BaseTool):
             forward_email = create_email_forward(ConversationID, recipients, email_response, False)
 
             ai_summary = format_email_summary_only(forward_email, email_response)
-
+            #force publish true
+            publish = "True"
             if publish.lower() == "true":
                 publish_draft_forward_card("New Forward Draft Email", forward_email, email_response)
                 forward_email.delete()
@@ -921,10 +901,9 @@ class MSDraftForwardEmail(BaseTool):
                 self.return_direct = False
                 return ai_summary
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -952,6 +931,8 @@ class MSDraftReplyToEmail(BaseTool):
             reply_email = create_email_reply(ConversationID, email_response)
 
             ai_summary = format_email_summary_only(reply_email, email_response)
+            #force publish true
+            publish = "True"
             if publish.lower() == "true":
                 publish_draft_card("New Draft Email", reply_email, email_response, True)
                 reply_email.delete()
@@ -963,10 +944,9 @@ class MSDraftReplyToEmail(BaseTool):
                 return ai_summary
 
         except Exception as e:
-            traceback.print_exc()
+            #traceback.print_exc()
             tb = traceback.format_exc()
-            tool_logger.error(tb + " \n" + e)
-            return tool_error(e, self.description)
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""

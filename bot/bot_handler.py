@@ -158,5 +158,6 @@ class RabbitHandler(BaseCallbackHandler):
         if error:
             #message = encode_message(config.USER_ID,'prompt', message)
             #self.message_channel.basic_publish(exchange='',routing_key='notify',body=message)
-            handler_logger.info(f"Chain Error: {error}")
+            handler_logger.error(f"Chain Error: {error}")
+            send_to_user(f"{error}")
             return str(error)

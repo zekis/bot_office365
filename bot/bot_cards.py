@@ -173,7 +173,7 @@ def create_email_card(message,email, summary):
                 "title": "Create Task",
                 "mode": "secondary",
                 "data": {
-                    "acDecision": f"Please use the office365 assistant and its CREATE_TASK tool to create an action for {bot_config.FRIENDLY_NAME} to do based on the email converstation {email.conversation_id} and summary: {summary}"
+                    "acDecision": f"Please use the office365 assistant and its CREATE_TASK tool to create a task in the 'Tasks' folder with subject {email.subject} for {bot_config.FRIENDLY_NAME} and body as: {summary}"
                 }
                 
             },
@@ -182,7 +182,7 @@ def create_email_card(message,email, summary):
                 "title": "Create Meeting",
                 "mode": "secondary",
                 "data": {
-                    "acDecision": f"Please use the office365 assistant and its CREATE_CALANDER_EVENT tool to create an meeting for {bot_config.FRIENDLY_NAME} to do based on the email converstation {email.conversation_id} and summary: {summary}"
+                    "acDecision": f"Please use the office365 assistant and its CREATE_CALANDER_EVENT tool to create an meeting with subject {email.subject} for {bot_config.FRIENDLY_NAME} to do based on the email summary: {summary}"
                 }
             }
 
@@ -540,7 +540,7 @@ def create_media_card(message, url):
     #     description = {task.body}
     # """
 
-def create_todo_card(message,event):
+def create_todo_card(message,event,folder):
     link = f"https://to-do.office.com/tasks/id/{event.task_id}"
     cards = {
         "type": "AdaptiveCard",
@@ -565,7 +565,7 @@ def create_todo_card(message,event):
                     },
                     {
                         "type": "TextBlock",
-                        "text": f"Task Folder: {event.folder_id}",
+                        "text": f"Task Folder: {folder}",
                         "weight": "bolder",
                         "wrap": True
                     },
@@ -602,10 +602,10 @@ def create_todo_card(message,event):
                 },
                 {
                 "type": "Action.Submit",
-                "title": "Modify",
+                "title": "Complete",
                 "mode": "secondary",
                 "data": {
-                    "acDecision": f"Please use the office365 assistant and its SET_TASK_COMPLETE tool using task_id: {event.task_id} to mark the task as complete"
+                    "acDecision": f"Please use the office365 assistant and its SET_TASK_COMPLETE tool using task_id: {event.task_id} and folder_name: {folder}, to mark the task as complete"
                 }
             }
             ]

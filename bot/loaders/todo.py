@@ -35,7 +35,7 @@ def get_tasks(folder_name):
     try:
         folder = todo.get_folder(folder_name=folder_name)
     except:
-        traceback.print_exc()
+        #traceback.print_exc()
         return "You must specify a valid folder name, use get_task_folders to get the list of folders"
     todo_list = folder.get_tasks()
     return todo_list
@@ -56,8 +56,9 @@ def get_task_detail(folder_name, task_name):
             return None
         
     except Exception as e:
-        traceback.print_exc()
-        return repr(e)
+        #traceback.print_exc()
+        tb = traceback.format_exc()
+        return tool_error(e, tb)
 
 def get_task_detail_by_id(folder_name, task_id):
     account = authenticate()
@@ -74,8 +75,9 @@ def get_task_detail_by_id(folder_name, task_id):
             return None
         
     except Exception as e:
-        traceback.print_exc()
-        return repr(e)
+        #traceback.print_exc()
+        tb = traceback.format_exc()
+        return tool_error(e, tb)
 
 def scheduler_get_task_due_today(folder):
     account = authenticate()
@@ -155,7 +157,7 @@ class MSGetTasks(BaseTool):
                         due_date = "No due date"
                     ai_summary = ai_summary + " - Subject: " + task.subject + ", Due " + due_date + "\n"
                     title = task.subject + " - " + due_date
-                    print(title)
+                    #print(title)
                     value = "Please use the office365 assistant and GET_TASK_DETAIL tool using folder_name: " + folder_name + " and task_id: " + task.task_id
                     human_summary.append((title, value))
                 
@@ -172,8 +174,9 @@ class MSGetTasks(BaseTool):
             raise Exception(f"Could not find tasks in folder {folder_name}")
 
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -194,7 +197,7 @@ class MSGetTaskDetail(BaseTool):
         try:
             # print(text)
             # data = parse_input(text)
-            if task_id or folder_name:
+            if task_id and folder_name:
                 task = get_task_detail_by_id(folder_name,task_id)
             else:
                 return "Must specify folder_name and task_id"
@@ -216,7 +219,7 @@ class MSGetTaskDetail(BaseTool):
 
                 if publish.lower() == "true":
                     message = task.subject
-                    publish_todo_card(message, task)
+                    publish_todo_card(message, task, folder_name)
                     self.return_direct = True
                     return None
                 else:
@@ -226,8 +229,9 @@ class MSGetTaskDetail(BaseTool):
             raise Exception(f"Could not find task {task_id} in folder {folder_name}")
             
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -252,7 +256,7 @@ class MSGetTaskFolders(BaseTool):
                 folder_clean = folder.name.replace("Folder: ","")
                 ai_summary = ai_summary + " - " + str(folder_clean) + "\n"
                 title = str(folder_clean) + "\n"
-                value = "Please use the GET_TASKS tool using folder name: " + str(folder_clean)
+                value = "Please use the office365 assistant and its GET_TASKS tool using folder name: " + str(folder_clean)
                 human_summary.append((title, value))
             
             
@@ -300,8 +304,9 @@ class MSCreateTaskFolder(BaseTool):
                 return f"Task Folder {folder_name} Created"
 
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -313,23 +318,29 @@ class MSSetTaskComplete(BaseTool):
     name = "SET_TASK_COMPLETE"
     summary = """Useful for when you need to mark a task as complete """
     parameters.append({"name": "task_id", "description": "task id" })
+    parameters.append({"name": "folder_name", "description": "task folder name" })
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
-    def _run(self, task_id: str, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, task_id: str, folder_name: str, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
             
             account = authenticate()
             todo = account.tasks()
 
-            todo_task = todo.get_task(task_id)
-            
-            if todo_task:
-                todo_task.mark_completed()
-                todo_task.save()
+            #todo_task = todo.get_task(task_id)
+            folder = todo.get_folder(folder_name)
+            if task_id and folder_name:
+                task = get_task_detail_by_id(folder_name,task_id)
+            else:
+                return "Must specify folder_name and task_id"
+
+            if task:
+                task.mark_completed()
+                task.save()
 
                 if publish.lower() == "true":
-                    publish_todo_card("Task Complete", todo_task)
+                    publish_todo_card("Task Complete", task, folder.name)
                     self.return_direct = True
                     return None
                 else:
@@ -339,8 +350,9 @@ class MSSetTaskComplete(BaseTool):
                 raise Exception(f"Could not find task {task_id}")
             
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -365,21 +377,26 @@ class MSCreateTask(BaseTool):
             account = authenticate()
             todo = account.tasks()
             folder = None
-            #get the folder and task
+            
+
+            #if no foldername supplied, default to tasks
             if not folder_name:
                 folder_name = "Tasks"
             
+            #if foldername supplied, check to see if exists
             folders = get_folders()
             for valid_folder in folders:
+                #if exists, grab the folder
                 if valid_folder.name == folder_name:
                     #found a matching valid folder
                     folder = todo.get_folder(folder_name=folder_name)
+                    break
             
-            if not folder:
-                folder = todo.new_folder(folder_name)
+            #if folder is none, we didnt find a match, just grab the default
+            if folder is None:
+                folder = todo.get_folder(folder_name="Tasks")
             
-            
-
+        
             if folder:
                 new_task = folder.new_task(task_name)
                 #expression_if_true if condition else expression_if_false
@@ -392,7 +409,7 @@ class MSCreateTask(BaseTool):
 
                 #ai_summary = get_task_detail(folder_name, task_name)
                 if publish.lower() == "true":
-                    publish_todo_card(task_name, new_task)
+                    publish_todo_card(task_name, new_task, folder.name)
                     self.return_direct = True
                     return None
                 else:
@@ -402,8 +419,9 @@ class MSCreateTask(BaseTool):
                 raise Exception(f"Could not find folder {folder_name}")
 
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -433,8 +451,9 @@ class MSDeleteTask(BaseTool):
                 self.return_direct = False
                 return f"Task {task_id} deleted"
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
 
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -463,6 +482,7 @@ class MSUpdateTask(BaseTool):
             # folder = todo.get_folder(folder_name=folder_name)
             # query = todo.new_query("title").equals(task_name)
             existing_task = todo.get_task(task_id)
+            folder = todo.get_folder(folder_id)
 
             if existing_task:
                 existing_task.subject = task_name
@@ -477,7 +497,7 @@ class MSUpdateTask(BaseTool):
                 existing_task.save()
 
                 if publish.lower() == "true":
-                    publish_todo_card("Task Updated", existing_task)
+                    publish_todo_card("Task Updated", existing_task, folder.name)
                     self.return_direct = True
                     return None
                 else:
@@ -487,8 +507,9 @@ class MSUpdateTask(BaseTool):
                 raise Exception(f"Could not find task {task_id}")
 
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
 
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""

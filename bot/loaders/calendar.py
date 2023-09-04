@@ -83,8 +83,9 @@ class MSGetCalendarEvents(BaseTool):
                 return "No Events"
             
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -120,8 +121,9 @@ class MSGetCalendarEvent(BaseTool):
                 raise Exception(f"Could not find event {eventID}")
             
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
@@ -184,8 +186,9 @@ class MSCreateCalendarEvent(BaseTool):
             
 
         except Exception as e:
-            traceback.print_exc()
-            return tool_error(e, self.description)
+            #traceback.print_exc()
+            tb = traceback.format_exc()
+            return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
         """Use the tool asynchronously."""
