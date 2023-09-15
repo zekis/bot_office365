@@ -1,6 +1,6 @@
 import traceback
 import bot_config
-
+import os
 from datetime import datetime
 from typing import Any, Dict, Optional, Type
 import bot_logging
@@ -29,6 +29,42 @@ from langchain.schema import (
 
 tool_logger = bot_logging.logging.getLogger('ToolLogger')
 tool_logger.addHandler(bot_logging.file_handler)
+example_email_format = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Email Subject</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            background-color: #ffffff;
+            margin: auto;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        h1 {
+            color: #333333;
+        }
+        p {
+            color: #666666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Our Service!</h1>
+        <p>Hello [Recipient's Name],</p>
+        <p>Email Body</p>
+    </div>
+</body>
+</html>
+"""
 
 def authenticate():
     
@@ -47,8 +83,9 @@ def get_email_summary(email, body_soup):
 
 
     try:
+        os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
         chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-        query = f"""Provide a abbreviated version of the latest message in the email chain, and the the conversation history, into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
+        query = f"""Provide a abbreviated version of the latest message in the email chain, and conversation history, into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
         To: {str_to_address}, From: {email.sender.address}, Subject: {email.subject}, Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}, Body: {body_soup}"""
 
         tool_logger.info(f"Query: {query}")
@@ -61,10 +98,13 @@ def get_email_summary(email, body_soup):
 
 
 def reply_to_email_summary(summary, example=None, comments=None, previous_draft=None):
-    chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-    query = f"""Given this email summary: {summary}, please create a reasonable email response from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER}.
-    Response is to be HTML formatted
-
+    os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
+    llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
+    query = f"""Given this email summary:  {summary}, 
+    
+    please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER} on behalf of {bot_config.OFFICE_USER}.
+    Response is include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
+    Response is to be HTMl formatted with simlary tags and styling {example_email_format}
 
     """
     if example:
@@ -75,13 +115,18 @@ def reply_to_email_summary(summary, example=None, comments=None, previous_draft=
         query += f"Based on the previous draft: {previous_draft}"
 
     tool_logger.info(f"Query: {query}")
-    email_response = chat([HumanMessage(content=query)]).content
+    email_response = llm.predict(query)
     return email_response
 
 def forward_email_summary(summary, example=None, comments=None, previous_draft=None):
-    chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-    query = f"""Given this email summary: {summary}, please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER}.
-    Response is to be HTML formatted and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
+    os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
+    llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
+    query = f"""Given this email summary: {summary}, 
+    
+    please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER} on behalf of {bot_config.OFFICE_USER}.
+    Response is include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
+    Response is to be HTMl formatted with simlary tags and styling {example_email_format}
+
     """
     if example:
         query += f"example: {example}"
@@ -91,13 +136,18 @@ def forward_email_summary(summary, example=None, comments=None, previous_draft=N
         query += f"Based on the previous draft: {previous_draft}"
 
     tool_logger.info(f"Query: {query}")
-    email_response = chat([HumanMessage(content=query)]).content
+    email_response = llm.predict(query)
     return email_response
 
 def modify_draft(body, comments, previous_draft=None):
-    chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-    query = f"""Given this request: {body}, please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER}
-    Email is to be HTML formatted and must include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
+    os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
+    llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
+    query = f"""Given this request: {body}, 
+    
+    
+    please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER} on behalf of {bot_config.OFFICE_USER}.
+    Response is include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
+    Response is to be HTMl formatted with simlary tags and styling {example_email_format}
     """
     if comments:
         query += f"Consider the following comments: {comments}"
@@ -105,7 +155,7 @@ def modify_draft(body, comments, previous_draft=None):
         query += f"Based on the previous draft: {previous_draft}"
 
     tool_logger.info(f"Query: {query}")
-    email_response = chat([HumanMessage(content=query)]).content
+    email_response = llm.predict(query)
     return email_response
 
 def get_conversation_sorted(ConversationID):
@@ -381,6 +431,7 @@ def review_email(email, summary):
         elif email_type == "EXTERNAL":
             intent = get_email_intent(email, summary)
             #next_action = task_reply_or_ignore(email, summary)
+        
         else:
             return
     else:
@@ -391,7 +442,7 @@ def review_email(email, summary):
     send_to_user(f"I have also determined {intent}")
     link = f"https://outlook.office.com/mail/inbox/id/{email.object_id}"
 
-    task_action_prompt = f"Please use the CREATE_TASK tool to create a task in the 'Tasks' folder with the subject {email.subject}, body to include {summary} and {link}, for {bot_config.FRIENDLY_NAME} to action."
+    task_action_prompt = f"Please use the CREATE_TASK tool to create a task in the 'Tasks' folder with the subject {email.subject}, body to include steps to complete and url {link}, for {bot_config.FRIENDLY_NAME} to action."
     email_action_prompt = f"Given this email I just received from {str_to_address}, Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format to {str_to_address} from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} with helpfull tips and add a signature from 'Chad the AI Assistant'. Email Received: {ai_summary}"
     #tool_logger.info("task_action_prompt: " + task_action_prompt)
     #tool_logger.info("email_action_prompt: " + email_action_prompt)
@@ -402,7 +453,11 @@ def review_email(email, summary):
         send_to_user(f"I think the next thing to do would be to create a reminder for this inquiry/question")
         send_to_me(task_action_prompt)
 
-
+    elif "PERMISSION/ACCESS" in intent:
+        """ The sender is requesting access to a server or service. """
+        send_to_user(f"I think the next thing to do would be to create a reminder about this request for you")
+        send_to_me(task_action_prompt)
+        # do something
 
     elif "FEEDBACK/OPINION" in intent:
         """ Comments or feedback about a product, service, or event. """
@@ -506,7 +561,7 @@ def task_reply_or_ignore(email, summary):
         str_to_address = str_to_address + to_address.address + ", "
 
     try:
-        
+        os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
         llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
         tools = load_tools(["human"], llm=llm)
 
@@ -539,16 +594,18 @@ def get_email_type(email, summary):
         str_to_address = str_to_address + to_address.address + ", "
 
     try:
-        
+        os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
         llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
         tools = load_tools(["human"], llm=llm)
 
-        available_types = f"""name: DONOTREPLY description: the email has been sent from an address indicating that its from a do not reply address. 
-        name: NEWSLETTER description: the email contains promotional information and or news and does not require a response 
-        name: INTERNAL description: the email has been sent from an internal address on the same domain as {bot_config.OFFICE_USER} 
-        name: EXTERNAL description: the email has been sent from an external address not on the same domain as {bot_config.OFFICE_USER}"""
+        available_types = f"""name: DONOTREPLY description: the email has been sent from an address indicating that its from a do not reply address, 
+        name: NEWSLETTER description: the email contains promotional information and or news and does not require a response, 
+        name: COPIED description: the email was not sent to directly to {bot.config.OFFICE_USER} and does not require a response, 
+        name: INTERNAL description: the email has been sent from an internal address on the same domain as {bot_config.OFFICE_USER}, 
+        name: EXTERNAL description: the email has been sent from an external address not on the same domain as {bot_config.OFFICE_USER},
+        name: MICROSOFT description: the email has been sent from microsoft."""
         
-        prompt = f"""Given the following email to {bot_config.FRIENDLY_NAME}, its your task to determine if this email is one of the following types,  return only the type name
+        prompt = f"""Given the following email to {str_to_address}, its your task to determine if this email is one of the following types,  return only the type name
         Types: {available_types}
         
         email: {ai_summary}"""
@@ -573,12 +630,15 @@ def get_email_intent(email, summary):
         str_to_address = str_to_address + to_address.address + ", "
 
     try:
-        
+        os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
         llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
         tools = load_tools(["human"], llm=llm)
         available_intents = """
 name: INQUIRY/QUESTION
 description: Emails where the sender is seeking information or clarification on a specific topic.
+
+name: PERMISSION/ACCESS
+description: Email where the sender is requesting access to a server or service.
 
 name: FEEDBACK/OPINION
 description: Comments or feedback about a product, service, or event.
@@ -809,9 +869,9 @@ class MSReplyToEmail(BaseTool):
     parameters = []
     optional_parameters = []
     name = "REPLY_TO_EMAIL"
-    summary = """useful for when you need to auto create a reply to an existing email chain."""
+    summary = """useful for when you need to send a reply to an existing email chain."""
     parameters.append({"name": "ConversationID", "description": "A valid email conversation ID" })
-    parameters.append({"name": "body", "description": "HTML formated email body" })
+    parameters.append({"name": "body", "description": "HTML formatted email body" })
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
@@ -925,6 +985,7 @@ class MSDraftReplyToEmail(BaseTool):
         try:
             email_chain = get_conversation_sorted(ConversationID)
             summary = get_email_summary(email_chain, clean_html(email_chain.body))
+            #summary = format_email_summary_only(email_chain, clean_html(email_chain.body))
 
             email_response = reply_to_email_summary(summary, example, previous_draft_improvements, previous_draft)
 

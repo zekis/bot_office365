@@ -81,6 +81,10 @@ class aiBot:
                 bot_config.OFFICE_USER = self.get_credential('email_address')
                 self.bot_init()
 
+            if prompt == "ping":
+                send_to_user(f'PID:{os.getpid()} - pong')
+                return
+
             if prompt and self.initialised:
                 #AI goes here
                 self.process_model(prompt)

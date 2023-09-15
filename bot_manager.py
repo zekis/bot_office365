@@ -99,6 +99,10 @@ async def process_server_message():
                 send_to_user(user_id, f"stopping bot instance...")
                 botManager.stop_instance(user_id)
                 return False
+            if prompt == 'ping':
+                send_to_user(user_id, f"pinging instances")
+                send_to_instance(user_id, 'ping')
+                return False
             if prompt == 'start':
                 send_to_user(user_id, f"starting bot instance...")
                 botManager.handle_instance(user_id)
