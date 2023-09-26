@@ -12,6 +12,7 @@ teams/scratch.py
 *.log
 /logs
 /data
+/bot/deleteme
 /bot/logs
 bot/logs/server.log.1
 bot/logs/server.log.2

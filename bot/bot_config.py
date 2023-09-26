@@ -26,6 +26,8 @@ OFFICE_USER = ""
 RESET_CONFIG = False
 VERBOSE = True
 
+HEARTBEAT_SEC = 4.0
+
 MAIN_AI = "gpt-3.5-turbo-16k"
 TOOL_AI = "gpt-3.5-turbo-16k"
 

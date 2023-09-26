@@ -30,40 +30,17 @@ from langchain.schema import (
 tool_logger = bot_logging.logging.getLogger('ToolLogger')
 tool_logger.addHandler(bot_logging.file_handler)
 example_email_format = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Email Subject</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 600px;
-            background-color: #ffffff;
-            margin: auto;
-            padding: 20px;
-            border-radius: 5px;
-        }
-        h1 {
-            color: #333333;
-        }
-        p {
-            color: #666666;
-        }
-    </style>
-</head>
+
 <body>
-    <div class="container">
-        <h1>Welcome to Our Service!</h1>
-        <p>Hello [Recipient's Name],</p>
+    <div>
+        <h2>Automated Response</h1>
+        <p>Hi [Recipient's Name],</p>
         <p>Email Body</p>
+        <p></p>
+        <p>Signature</p>
     </div>
 </body>
-</html>
+
 """
 
 def authenticate():
@@ -97,23 +74,23 @@ def get_email_summary(email, body_soup):
         return tool_error(e, tb)
 
 
-def reply_to_email_summary(summary, example=None, comments=None, previous_draft=None):
+def reply_to_email_summary(summary, sender, example=None, comments=None, previous_draft=None):
     os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
     llm = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI, verbose=bot_config.VERBOSE)
     query = f"""Given this email summary:  {summary}, 
     
-    please create a reasonable email from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER} on behalf of {bot_config.OFFICE_USER}.
+    please create a reasonable reply from 'Chad the AI Assistant' on behalf of {bot_config.OFFICE_USER} to {sender}.
     Response is include an informal 'To' salutation and opening line at the start and add a signature from 'Chad the AI Assistant'
     Response is to be HTMl formatted with simlary tags and styling {example_email_format}
 
     """
     if example:
-        query += f"Example: {example}"
+        query += f": {example}"
     if comments:
         query += f"Consider the following comments: {comments}"
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
-
+    print(query)
     tool_logger.info(f"Query: {query}")
     email_response = llm.predict(query)
     return email_response
@@ -425,10 +402,10 @@ def review_email(email, summary):
     email_type = get_email_type(email, summary)
     if email_type:
         send_to_user(f"I have determined that this is a {email_type} email")
-        if email_type == "INTERNAL":
+        if  "INTERNAL" in email_type:
             intent = get_email_intent(email, summary)
             #next_action = task_reply_or_ignore(email, summary)
-        elif email_type == "EXTERNAL":
+        elif "EXTERNAL" in email_type:
             intent = get_email_intent(email, summary)
             #next_action = task_reply_or_ignore(email, summary)
         
@@ -600,7 +577,7 @@ def get_email_type(email, summary):
 
         available_types = f"""name: DONOTREPLY description: the email has been sent from an address indicating that its from a do not reply address, 
         name: NEWSLETTER description: the email contains promotional information and or news and does not require a response, 
-        name: COPIED description: the email was not sent to directly to {bot.config.OFFICE_USER} and does not require a response, 
+        name: COPIED description: the email was not sent to directly to {bot_config.OFFICE_USER} and does not require a response, 
         name: INTERNAL description: the email has been sent from an internal address on the same domain as {bot_config.OFFICE_USER}, 
         name: EXTERNAL description: the email has been sent from an external address not on the same domain as {bot_config.OFFICE_USER},
         name: MICROSOFT description: the email has been sent from microsoft."""
@@ -987,7 +964,7 @@ class MSDraftReplyToEmail(BaseTool):
             summary = get_email_summary(email_chain, clean_html(email_chain.body))
             #summary = format_email_summary_only(email_chain, clean_html(email_chain.body))
 
-            email_response = reply_to_email_summary(summary, example, previous_draft_improvements, previous_draft)
+            email_response = reply_to_email_summary(summary, email_chain.sender.address, example, previous_draft_improvements, previous_draft)
 
             reply_email = create_email_reply(ConversationID, email_response)
 

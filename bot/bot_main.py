@@ -3,8 +3,8 @@ from datetime import datetime
 import bot_logging
 import bot_config
 from bot_handler import RabbitHandler
-from bot_comms import from_bot_manager, send_to_user, get_input, send_prompt
-
+from bot_comms import from_bot_manager, send_to_user, get_input, send_prompt, from_bot_to_bot_manager
+import sys
 
 from loaders.todo import MSGetTasks, MSGetTaskFolders, MSGetTaskDetail, MSSetTaskComplete, MSCreateTask, MSDeleteTask, MSCreateTaskFolder, MSUpdateTask
 from loaders.calendar import MSGetCalendarEvents, MSGetCalendarEvent, MSCreateCalendarEvent
@@ -84,6 +84,11 @@ class aiBot:
             if prompt == "ping":
                 send_to_user(f'PID:{os.getpid()} - pong')
                 return
+            
+            if prompt == "kill":
+                send_to_user(f'PID:{os.getpid()} - Shutting Down')
+                sys.exit()
+                return
 
             if prompt and self.initialised:
                 #AI goes here
@@ -140,6 +145,9 @@ class aiBot:
         if self.initialised:
             "check emails"
             scheduler_check_emails()
+
+    def heartbeat(self):
+        from_bot_to_bot_manager('heartbeat', os.getpid())
 
     def load_tools(self, llm) -> list():
         

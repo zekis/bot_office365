@@ -150,6 +150,8 @@ def send_to_instance(user_id: str, prompt: str):
 
     message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
 
+
+
 def send_credentials_to_instance(user_id: str, credentials: list):
     "encode and send a message directly to a bot using <channel_id>"
     bot_instance_channel = bot_config.BOT_ID + user_id

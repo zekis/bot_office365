@@ -17,6 +17,14 @@ from bot_comms import send_to_user
 logger = bot_logging.logging.getLogger('BotInstance') 
 logger.addHandler(bot_logging.file_handler)
 
+
+async def heartbeat_scheduler(bot):
+    #publish("Let me check to see if I have any scheduled tasks due today.")
+    while True:
+        
+        bot.heartbeat()
+        await asyncio.sleep(bot_config.HEARTBEAT_SEC)
+
 async def task_scheduler(bot):
     #publish("Let me check to see if I have any scheduled tasks due today.")
     while True:
@@ -55,6 +63,7 @@ async def main():
     ai_tasks.append(asyncio.create_task(ai_response(bot)))
     ai_tasks.append(asyncio.create_task(task_scheduler(bot)))
     ai_tasks.append(asyncio.create_task(email_scheduler(bot)))
+    ai_tasks.append(asyncio.create_task(heartbeat_scheduler(bot)))
     await asyncio.gather(*ai_tasks)
 
 

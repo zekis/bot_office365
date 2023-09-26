@@ -1,4 +1,6 @@
 import subprocess
+import os
+import signal
 import bot_config
 import datetime
 from user_manager import UserManager
@@ -93,11 +95,47 @@ async def process_server_message():
                 server_contact = True
                 last_server_contact = current_time
                 bot_config.HEARTBEAT_SEC = bot_config.HEARTBEAT_NORMAL_SEC
+            
+            # ... [the beginning of your function remains unchanged]
+
+        
+            if command == "heartbeat":
+                # Update the last_bot_contact time for known bots
+                is_my_process = False
+                
+                for pid, process in botManager.user_processes.items():
+                    # Depending on what type `process` is, you might need to adjust this
+                    if process.pid == data:  
+                        process.last_bot_contact = current_time
+                        is_my_process = True
+                        break
+
+                if not is_my_process:
+                    # Bot is not known to the manager
+                    bot_logger.warn(f"Received heartbeat from unknown bot with process ID: {data}.")
+                    # Kill process using ID in data
+                    try:
+                        os.kill(data, signal.SIGTERM)
+                        bot_logger.info(f"Killed unknown bot process with ID: {data}.")
+                    except ProcessLookupError:
+                        bot_logger.error(f"Process with ID {data} not found.")
+
+
+
 
         if prompt:
             if prompt == 'stop':
                 send_to_user(user_id, f"stopping bot instance...")
                 botManager.stop_instance(user_id)
+                return False
+            if prompt == 'status':
+                if user_id in botManager.user_processes:
+                    last_bot_contact = botManager.user_processes[user_id].last_bot_contact
+                    process_id = botManager.user_processes[user_id].pid
+                    send_to_user(user_id, f"Current Instance PID: {process_id}, Last Reported Healthy {last_bot_contact}")
+                else:
+                    send_to_user(user_id, f"No running bot instance")
+                
                 return False
             if prompt == 'ping':
                 send_to_user(user_id, f"pinging instances")
@@ -133,7 +171,13 @@ async def process_server_message():
         #kill all bots
         botManager.stop_all_processes()
                 
-
+    # for process in user_processes:
+    #     if (current_time - process.last_bot_contact).total_seconds() > float(bot_config.BOT_TIMEOUT_SEC):
+    #         #kill process
+    #         self.user_processes[user_id].terminate()
+    #         self.user_processes[user_id].wait()
+    #         del self.user_processes[user_id]
+    #         bot_logger.warn(f"Bot stopped.")
 
 
 

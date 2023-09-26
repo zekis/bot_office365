@@ -66,6 +66,17 @@ def encode_instance_message(user_id, prompt: str) -> str:
 
     return json.dumps(response)
 
+def encode_command(bot_id, command: str, data: str) -> str:
+    "encode a <prompt> into a dict and return a string to send via rabbitmq to a bot"
+    
+    response = {
+        "bot_id": bot_id,
+        "command": command,
+        "data": data
+    }
+    comms_logger.debug(f"ENCODING: {response}")
+
+    return json.dumps(response)
 
 def send_to_user(prompt: str):
     "encode and send a message directly to a bot using <channel_id>"
@@ -103,6 +114,23 @@ def send_to_me(prompt: str):
 
     message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
 
+def send_to_another_bot(bot_id, command: str, data: str):
+    "encode and send a message directly to another bot using <channel_id>. Example would be for an email bot to use a journal bot"
+    user_id = bot_config.USER_ID
+    bot_instance_channel = bot_id + bot_config.USER_ID
+
+    comms_logger.debug(f"CHANNEL: {bot_id} - {command}")
+
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+
+    message_channel = connection.channel()
+
+    message_channel.queue_declare(queue=bot_instance_channel)
+
+    message = encode_command(bot_instance_channel, command, data)
+
+    message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
+
 def from_bot_manager() -> str:
     'consume and decode a message from <channel_id> directed as a specific user'
     channel_id = bot_config.BOT_ID + bot_config.USER_ID
@@ -123,73 +151,20 @@ def from_bot_manager() -> str:
     else:
         return None
 
+def from_bot_to_bot_manager(command: str, data: str):
+    "encode and send a message to a bot manager using <channel_id>"
+    bot_id = bot_config.BOT_ID
+    comms_logger.debug(f"CHANNEL: {bot_id} - {command}")
 
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
+    message_channel = connection.channel()
 
+    message_channel.queue_declare(queue=bot_id)
 
-# def publish_system_message(command, parameters, override_id=None):
-#     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-#     if not override_id:
-#         message = encode_message(ai_config.USER_ID, 'prompt', command, parameters)
-#     else:
-#         message = encode_message(override_id, 'prompt', command, parameters)
-#     notify_channel = connection.channel()
-#     notify_channel.basic_publish(exchange='',
-#                       routing_key='notify',
-#                       body=message)
-#     #print(message)
-#     notify_channel.close()
+    message = encode_command(bot_id, command, data)
 
-
-
-# def publish_action(message, button1, button2, override_id=None):
-#     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-#     actions = [CardAction(
-#         type=ActionTypes.im_back,
-#         title=button1,
-#         value=button1,
-#     ),
-#     CardAction(
-#         type=ActionTypes.im_back,
-#         title=button2,
-#         value=button2,
-#     )]
-#     actions = [action.__dict__ for action in actions] if actions else []
-#     if not override_id:
-#         message = encode_message(ai_config.USER_ID, 'action', message, actions)
-#     else:
-#         message = encode_message(override_id, 'action', message, actions)
-    
-#     notify_channel = connection.channel()
-#     notify_channel.basic_publish(exchange='',
-#                       routing_key='notify',
-#                       body=message)
-#     #print(message)
-#     notify_channel.close()
-
-# def publish_actions(message, buttons, override_id=None):
-#     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
-
-#     actions = [CardAction(
-#         type=ActionTypes.im_back,
-#         title=button[0],
-#         value=button[1],
-#         mode="secondary"
-#     ) for button in buttons]
-
-#     actions = [action.__dict__ for action in actions] if actions else []
-
-#     if not override_id:
-#         message = encode_message(ai_config.USER_ID, 'action', message, actions)
-#     else:
-#         message = encode_message(override_id, 'action', message, actions)
-
-#     notify_channel = connection.channel()
-#     notify_channel.basic_publish(exchange='',
-#                       routing_key='notify',
-#                       body=message)
-#     #print(message)
-#     notify_channel.close()
+    message_channel.basic_publish(exchange='',routing_key=bot_id,body=message)
 
 
 def publish_list(message,strings_values):
