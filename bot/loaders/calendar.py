@@ -2,10 +2,11 @@ import traceback
 import bot_config
 import bot_logging
 
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz
 from typing import Any, Dict, Optional, Type
 
-from bot_comms import publish_event_card, publish_list
+from bot_comms import publish_event_card, publish_list, send_to_another_bot, send_to_user
 from bot_utils import tool_description, tool_error
 
 from O365 import Account
@@ -27,7 +28,7 @@ def search_calendar(start_date, end_date):
     account = authenticate()
     schedule = account.schedule()
     calendar = schedule.get_default_calendar()
-    print(calendar.name)
+    #print(calendar.name)
 
     q = calendar.new_query('start').greater_equal(start_date)
     q.chain('and').on_attribute('end').less_equal(end_date)
@@ -44,6 +45,33 @@ def get_event(eventID):
     event = calendar.get_event(eventID)  # include_recurring=True will include repeated events on the result set.
     return event
 
+sent_reminders = set()
+#Todo, add loop to check for upcomming meetings and create journal entries for this
+def check_for_upcomming_event():
+    global sent_reminders
+    #todo make timezone configurable
+    timezone = pytz.timezone('Australia/Perth')
+    start_date = datetime.now(timezone)
+    end_date = datetime.now(timezone) + timedelta(hours=12)
+    events = search_calendar(start_date, end_date)
+    tool_logger.debug(f"Checking events between {start_date} and {end_date}")
+    for event in events:
+        reminder_time = event.start.astimezone(timezone) - timedelta(minutes=event.remind_before_minutes)
+        #tool_logger.info(f"Checking event {event.subject} starting {reminder_time}")
+        if (reminder_time < datetime.now(timezone) and event.is_all_day == False and event.is_reminder_on and event.object_id not in sent_reminders):
+            str_attendees = ""
+            for attendee in event.attendees:
+                str_attendees = attendee + "," + str_attendees
+            str_location = event.location.get('displayName')
+            if str_location == "":
+                str_location = 'No location'
+            if str_attendees:
+                send_to_user(f"You have a meeting starting in {event.remind_before_minutes} about {event.subject} with {event.organizer} and {str_attendees}")
+                send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting about {event.subject} in {str_location} with {event.organizer} and {str_attendees}")
+            else:
+                send_to_user(f"You have a meeting starting in {event.remind_before_minutes} about {event.subject} with {event.organizer}")
+                send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting about {event.subject} in {str_location} with {event.organizer}")
+            sent_reminders.add(event.object_id)
 
 class MSGetCalendarEvents(BaseTool):
     parameters = []
@@ -174,7 +202,7 @@ class MSCreateCalendarEvent(BaseTool):
             new_event.save()    
         
             ai_summary = "New Calander Event: " + new_event.subject + ", At " + new_event.start.strftime("%A, %B %d, %Y at %I:%M %p") + "\n"
-
+            send_to_another_bot('journal',f"Please add to my journal that I created {ai_summary}")
             if publish.lower() == "true":
                 title_message = f"New Calander Event"
                 publish_event_card(title_message, new_event)

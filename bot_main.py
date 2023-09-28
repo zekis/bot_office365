@@ -21,10 +21,11 @@ import threading
 #from aiohttp import web
 #from botbuilder.core.integration import aiohttp_error_middleware
 
-from bot_manager import process_server_message, register_self
+from bot_manager import process_server_message, register_self, clear_heartbeats
 
 async def main_loop():
     #logger.info("Start message processing")
+    clear_heartbeats()
     register_self()
 
     while True:

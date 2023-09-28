@@ -78,6 +78,7 @@ def encode_command(bot_id, command: str, data: str) -> str:
 
     return json.dumps(response)
 
+
 def send_to_user(prompt: str):
     "encode and send a message directly to a bot using <channel_id>"
     channel_id = bot_config.DISPATCHER_CHANNEL_ID
@@ -114,22 +115,30 @@ def send_to_me(prompt: str):
 
     message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
 
-def send_to_another_bot(bot_id, command: str, data: str):
-    "encode and send a message directly to another bot using <channel_id>. Example would be for an email bot to use a journal bot"
-    user_id = bot_config.USER_ID
-    bot_instance_channel = bot_id + bot_config.USER_ID
+def send_to_another_bot(bot_forward_id, prompt: str):
+    channel_id = bot_config.DISPATCHER_CHANNEL_ID
+    bot_id = bot_config.BOT_ID
+   
+    data = {
+        'bot_user_id': bot_config.USER_ID,
+        'bot_forward_id': bot_forward_id,
+        'bot_prompt': prompt
+        }
 
-    comms_logger.debug(f"CHANNEL: {bot_id} - {command}")
+
+    "encode and send a message to a bot manager using <channel_id>"
+    comms_logger.info(f"CHANNEL: {bot_forward_id} - {prompt}")
 
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
     message_channel = connection.channel()
 
-    message_channel.queue_declare(queue=bot_instance_channel)
+    message_channel.queue_declare(queue=channel_id)
 
-    message = encode_command(bot_instance_channel, command, data)
+    message = encode_command(bot_id, 'forward', data)
 
-    message_channel.basic_publish(exchange='',routing_key=bot_instance_channel,body=message)
+    message_channel.basic_publish(exchange='',routing_key=channel_id,body=message)
+
 
 def from_bot_manager() -> str:
     'consume and decode a message from <channel_id> directed as a specific user'

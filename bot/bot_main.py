@@ -3,11 +3,12 @@ from datetime import datetime
 import bot_logging
 import bot_config
 from bot_handler import RabbitHandler
-from bot_comms import from_bot_manager, send_to_user, get_input, send_prompt, from_bot_to_bot_manager
+from bot_comms import from_bot_manager, send_to_user, get_input, send_prompt, from_bot_to_bot_manager, send_to_another_bot
 import sys
 
+from loaders.forward import Forward
 from loaders.todo import MSGetTasks, MSGetTaskFolders, MSGetTaskDetail, MSSetTaskComplete, MSCreateTask, MSDeleteTask, MSCreateTaskFolder, MSUpdateTask
-from loaders.calendar import MSGetCalendarEvents, MSGetCalendarEvent, MSCreateCalendarEvent
+from loaders.calendar import MSGetCalendarEvents, MSGetCalendarEvent, MSCreateCalendarEvent, check_for_upcomming_event
 from loaders.todo import scheduler_get_task_due_today, scheduler_get_bots_unscheduled_task
 from loaders.outlook import scheduler_check_emails
 from loaders.outlook import (
@@ -79,6 +80,9 @@ class aiBot:
                 bot_config.TENANT_ID = self.get_credential('tenant_id')
                 bot_config.FRIENDLY_NAME = self.get_credential('user_name')
                 bot_config.OFFICE_USER = self.get_credential('email_address')
+                bot_config.APP_ID = self.get_credential('app_id')
+                bot_config.APP_SECRET = self.get_credential('app_secret')
+                bot_config.FOLDER_TO_MONITOR = self.get_credential('folder_to_monitor')
                 self.bot_init()
 
             if prompt == "ping":
@@ -99,6 +103,7 @@ class aiBot:
         #inital_prompt = f"Previous conversation: {self.memory.buffer_as_str}" + f''', Thinking step by step and With only the tools provided and with the current date and time of {current_date_time} help the human with the following request, Request: {question} '''
         inital_prompt = f'''With the current date and time of {current_date_time} help the human with the following request, Request: {question} '''
         response = self.agent_executor.run(input=inital_prompt, callbacks=[self.handler])
+        
         self.logger.info(response)
 
     def process_task_schedule(self):
@@ -112,10 +117,12 @@ class aiBot:
                     send_to_user(f"Looks like one of my tasks is due - {task.subject}")
                     current_date_time = datetime.now() 
                     try:
-                        inital_prompt = f'''With only the tools provided and with the current date and time of {current_date_time}, help the human with the following request, Request: {task.subject} - {task.body}'''
+                        inital_prompt = f'''With only the tools provided and with the current date and time of {current_date_time}, help the human with the following request, Request: {task.subject} - {task.body}
+                        If a tool isnt available, use the FORWARD tool'''
                         response = self.agent_executor.run(input=inital_prompt, callbacks=[self.handler])
                         task.body = response
                         task.mark_completed()
+                        #send_to_another_bot('journal',f"Add to journal that Office Bot Completed the task: {task.subject}")
                         task.save()
                     except Exception as e:
                         send_to_user( f"An exception occurred: {e}")
@@ -131,15 +138,19 @@ class aiBot:
                     bot_logging.info(task.subject)
                     current_date_time = datetime.now() 
                     try:
-                        inital_prompt = f'''With only the tools provided and with the current date and time of {current_date_time}, help the human with the following request, Request: {task.subject} - {task.body}'''
+                        inital_prompt = f'''With only the tools provided and with the current date and time of {current_date_time}, help the human with the following request, Request: {task.subject} - {task.body}
+                        If a tool isnt available, use the FORWARD tool'''
                         response = self.agent_executor.run(input=inital_prompt, callbacks=[self.handler])
                         task.body = response
                         task.mark_completed()
+                        send_to_another_bot('journal',f"Add to journal that Office Bot Completed the task: {task.subject}")
                         task.save()
                     except Exception as e:
                         send_to_user( f"An exception occurred: {e}")
                 else:
                     break
+            
+            check_for_upcomming_event()
 
     def process_email_schedule(self):
         if self.initialised:
@@ -153,6 +164,8 @@ class aiBot:
         
         tools = load_tools(["human"], input_func=get_input, prompt_func=send_prompt, llm=llm)
         
+        
+
         tools.append(MSGetTaskFolders())
         tools.append(MSGetTasks())
         tools.append(MSGetTaskDetail())
@@ -173,6 +186,8 @@ class aiBot:
         tools.append(MSGetCalendarEvents())
         tools.append(MSGetCalendarEvent())
         tools.append(MSCreateCalendarEvent())
+
+        tools.append(Forward())
 
         return tools
     

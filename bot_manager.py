@@ -179,22 +179,28 @@ async def process_server_message():
     #         del self.user_processes[user_id]
     #         bot_logger.warn(f"Bot stopped.")
 
-
+def clear_heartbeats():
+    clear_queue(bot_config.BOT_ID)
 
 def register_self():
     "send register message to server"
     "To use this bot, the server must send these values"
     required_credentials = []
-    required_credentials.append('openai_api')
-    required_credentials.append('tenant_id')
-    required_credentials.append('user_name')
-    required_credentials.append('email_address')
+    required_credentials.append(('openai_api', 'This is your OpenAI API key'))
+    required_credentials.append(('tenant_id', 'Microsoft Application tenant ID'))
+    required_credentials.append(('user_name', 'Your office username. Usually this is firstname.lastname'))
+    required_credentials.append(('email_address', 'Your office EMAIL address, this is used to determine if emails are addressed to you'))
+    required_credentials.append(('app_id', 'The Microsoft Application ID. This app must be given permission to access emails and tasks'))
+    required_credentials.append(('app_secret', 'The Microsoft Application secrect key'))
+    required_credentials.append(('folder_to_monitor', 'This is the folder that the bot will monitor for incoming emails, If you are not sure, just enter inbox'))
+    
     register_package = {
-        'description': bot_config.BOT_DESCRIPTION,
+        'description': 'BOT_DESCRIPTION',  # Replace with actual description
         'required_credentials': required_credentials
     }
     send_to_dispatcher("register", register_package)
-    #send_to_dispatcher(bot_con, bot_id, command, data)
+    # send_to_dispatcher(bot_con, bot_id, command, data)
+
 
 
 

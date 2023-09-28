@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from typing import Any, Dict, Optional, Type
 
-from bot_comms import publish_todo_card, publish_list, publish_folder_list, send_to_user
+from bot_comms import publish_todo_card, publish_list, publish_folder_list, send_to_user, send_to_another_bot
 from bot_utils import tool_description, tool_error, sanitize_subject
 
 from O365 import Account
@@ -341,6 +341,7 @@ class MSSetTaskComplete(BaseTool):
 
                 if publish.lower() == "true":
                     send_to_user(f"Task Marked as Complete")
+                    send_to_another_bot('journal',f'Please add to my journal that task {task_id} is completed')
                     self.return_direct = True
                     return None
                 else:
@@ -406,7 +407,7 @@ class MSCreateTask(BaseTool):
                 if reminder_date:
                     new_task.reminder_date = reminder_date
                 new_task.save()
-
+                send_to_another_bot('journal',f'Please add to my journal that task {task_name} was created')
                 #ai_summary = get_task_detail(folder_name, task_name)
                 if publish.lower() == "true":
                     publish_todo_card(task_name, new_task, folder.name)

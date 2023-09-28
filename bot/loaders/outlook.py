@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Type
 import bot_logging
 
-from bot_comms import publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_me, publish_event_card, send_to_user
+from bot_comms import publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_me, publish_event_card, send_to_user, send_to_another_bot
 from bot_utils import tool_description, tool_error
 #from common.card_factories import create_list_card
 
@@ -380,16 +380,17 @@ def scheduler_check_emails():
         for email in emails:
             if not email.is_event_message:
                 summary = get_email_summary(email, clean_html(email.body))
-                publish_email_card("Email", email, summary)
+                
                 
                 #Determine Type and Intent of Email
                 review_email(email, summary)
-
+                
                 #Always mark email read, or we end up reviewing the same email forever.
                 email.mark_as_read()
                 
             else:
                 publish_event_card("New Event", email.get_event())
+                send_to_another_bot('journal',f"Please add to my journal that I recieved an invite from {email.sender.address} about {email.subject} ")
                 email.mark_as_read()
     return None
 
@@ -399,25 +400,34 @@ def review_email(email, summary):
     #publish a task question back to itself
     
     #email.mark_as_read()
+    type_prompt = ""
     email_type = get_email_type(email, summary)
     if email_type:
-        send_to_user(f"I have determined that this is a {email_type} email")
-        if  "INTERNAL" in email_type:
+        
+        if  "DIRECT" in email_type:
+            type_prompt = f"I have determined that this is email is direct to you"
             intent = get_email_intent(email, summary)
             #next_action = task_reply_or_ignore(email, summary)
-        elif "EXTERNAL" in email_type:
+        elif "OTHER" in email_type:
+            type_prompt = f"I was not able to determine the type of email."
             intent = get_email_intent(email, summary)
             #next_action = task_reply_or_ignore(email, summary)
         
         else:
+            send_to_user(f"I have determined that this is a {email_type} email and will mark it as read and ignore it.")
             return
     else:
         return
+    publish_email_card("Email Review", email, summary)
+
     ai_summary = format_email_summary_only(email, summary)
+    
 
     str_to_address = email.sender.address
-    send_to_user(f"I have also determined {intent}")
+    intent_prompt = f"I have also determined {intent}."
     link = f"https://outlook.office.com/mail/inbox/id/{email.object_id}"
+
+    send_to_another_bot('journal',f"Please add to my journal that I recieved an {intent} email from {str_to_address} about {email.subject} ")
 
     task_action_prompt = f"Please use the CREATE_TASK tool to create a task in the 'Tasks' folder with the subject {email.subject}, body to include steps to complete and url {link}, for {bot_config.FRIENDLY_NAME} to action."
     email_action_prompt = f"Given this email I just received from {str_to_address}, Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format to {str_to_address} from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} with helpfull tips and add a signature from 'Chad the AI Assistant'. Email Received: {ai_summary}"
@@ -427,37 +437,38 @@ def review_email(email, summary):
     
     if "INQUIRY/QUESTION" in intent:
         """ Emails where the sender is seeking information or clarification on a specific topic. """
-        send_to_user(f"I think the next thing to do would be to create a reminder for this inquiry/question")
-        send_to_me(task_action_prompt)
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this inquery/question for you")
+        #we could forward to a wiki bot of some kind to get a response and email it.
+        send_to_me(email_action_prompt)
 
     elif "PERMISSION/ACCESS" in intent:
         """ The sender is requesting access to a server or service. """
-        send_to_user(f"I think the next thing to do would be to create a reminder about this request for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think the next thing to do would be to create a reminder about this request for you")
         send_to_me(task_action_prompt)
         # do something
 
     elif "FEEDBACK/OPINION" in intent:
         """ Comments or feedback about a product, service, or event. """
-        send_to_user(f"I think I could respond to this feedback/opinion for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this feedback/opinion for you")
         send_to_me(email_action_prompt)
     
         # do something
 
     elif "COMPLAINT/PROBLEM" in intent:
         """ When something has gone wrong or the sender is dissatisfied. """
-        send_to_user(f"I think I could respond to this complaint/problem for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this complaint/problem for you")
         send_to_me(email_action_prompt)
         # do something
 
     elif "REQUEST FOR ASSISTANCE" in intent:
         """ Support requests or help with a product or service. """
-        send_to_user(f"I think I could respond to this request for assistance for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this request for assistance for you")
         send_to_me(email_action_prompt)
         # do something
 
     elif "ORDER/TRANSACTION" in intent:
         """ Emails related to the purchase, delivery, or refund of a product or service. """
-        send_to_user(f"I think I could respond to this order/transaction email for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this order/transaction email for you")
         send_to_me(email_action_prompt)
         # do something
 
@@ -467,13 +478,11 @@ def review_email(email, summary):
 
     elif "THANK YOU/APPRECIATION" in intent:
         """ Expressions of gratitude or appreciation. """
-        send_to_user(f"I think I could respond to this thankyou/appreciation for you")
-        send_to_me(email_action_prompt)
         # do something
 
     elif "INTRODUCTION/NETWORKING" in intent:
         """ Where the sender is introducing themselves or looking to establish a connection. """
-        send_to_user(f"I think I could respond to this introduction/networking email for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this introduction/networking email for you")
         send_to_me(email_action_prompt)
         # do something
 
@@ -484,14 +493,14 @@ def review_email(email, summary):
     elif "SUBSCRIPTION" in intent:
         """ Requests or confirmations about subscribing or unsubscribing from a service or mailing list. """
         """ Emails where the sender is seeking information or clarification on a specific topic. """
-        send_to_user(f"I think the next thing to do would be to create a reminder about this subscription for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think the next thing to do would be to create a reminder about this subscription for you")
         send_to_me(task_action_prompt)
 
         # do something
 
     elif "RECOMMENDATION/REFERRAL" in intent:
         """ Where someone is recommending a person, product, or service. """
-        send_to_user(f"I think I could respond to this recommendation/referral for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this recommendation/referral for you")
         send_to_me(email_action_prompt)
         # do something
 
@@ -501,26 +510,26 @@ def review_email(email, summary):
 
     elif "CONFIRMATION" in intent:
         """ Confirming actions, purchases, sign-ups, or other activities. """
-        send_to_user(f"I think the next thing to do would be to create a reminder about this confirmation for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think the next thing to do would be to create a reminder about this confirmation for you")
         send_to_me(task_action_prompt)
         # do something
 
     elif "REMINDER" in intent:
         """ Reminder for events, payments, or other actions. """
-        send_to_user(f"I think the next thing to do would be to create a reminder for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think the next thing to do would be to create a reminder for you")
         send_to_me(task_action_prompt)
         # do something
 
     elif "LEGAL/OFFICIAL" in intent:
         """ Communications regarding contracts, official notices, or other legal matters. """
         """ Emails where the sender is seeking information or clarification on a specific topic. """
-        send_to_user(f"I think the next thing to do would be to create a reminder to respond to this official/legal issue")
+        send_to_user(f"{type_prompt} {intent_prompt} I think the next thing to do would be to create a reminder to respond to this official/legal issue")
         send_to_me(task_action_prompt)
         # do something
 
     elif "SOCIAL/PERSONAL" in intent:
         """ Informal communications, greetings, or personal updates. """
-        send_to_user(f"I think I could respond to this social/personal email for you")
+        send_to_user(f"{type_prompt} {intent_prompt} I think I could respond to this social/personal email for you")
         send_to_me(email_action_prompt)
         # do something
 
@@ -576,17 +585,16 @@ def get_email_type(email, summary):
         tools = load_tools(["human"], llm=llm)
 
         available_types = f"""name: DONOTREPLY description: the email has been sent from an address indicating that its from a do not reply address, 
-        name: NEWSLETTER description: the email contains promotional information and or news and does not require a response, 
-        name: COPIED description: the email was not sent to directly to {bot_config.OFFICE_USER} and does not require a response, 
-        name: INTERNAL description: the email has been sent from an internal address on the same domain as {bot_config.OFFICE_USER}, 
-        name: EXTERNAL description: the email has been sent from an external address not on the same domain as {bot_config.OFFICE_USER},
-        name: MICROSOFT description: the email has been sent from microsoft."""
+        name: COPIED description: {bot_config.OFFICE_USER} was CCd or BCCd and not sent directly to {bot_config.OFFICE_USER}, 
+        name: MICROSOFT description: the email has been sent from microsoft.
+        name: DIRECT description: email sent directly to {bot_config.OFFICE_USER} and not from microsoft, a do not reply address.
+        name: OTHER description: Unable to determine"""
         
-        prompt = f"""Given the following email to {str_to_address}, its your task to determine if this email is one of the following types,  return only the type name
+        prompt = f"""Helping {bot_config.OFFICE_USER} you are given the following email and its your task to check the from and to address to determine if this email is one of the following types,  return only the type name
         Types: {available_types}
         
         email: {ai_summary}"""
-        tool_logger.debug(prompt)
+        tool_logger.info(prompt)
 
         agent_executor = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs = {
                 "input_variables": ["input", "agent_scratchpad"]
@@ -827,6 +835,7 @@ class MSSendEmail(BaseTool):
             response = draft_email(recipient, subject, body, save=True)
             if publish.lower() == "true":
                 send_to_user("A draft email is saved - Please manually send from outlook")
+                send_to_another_bot('journal',f'Please add to my journal that I created a draft email to {recipient} about {subject}')
                 self.return_direct = True
                 return None
             else:

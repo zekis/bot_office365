@@ -23,6 +23,11 @@ TENANT_ID = ""
 FRIENDLY_NAME = ""
 OFFICE_USER = ""
 
+APP_ID = ""
+APP_SECRET = ""
+
+FOLDER_TO_MONITOR = ""
+
 RESET_CONFIG = False
 VERBOSE = True
 
