@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytz
 from typing import Any, Dict, Optional, Type
 
-from bot_comms import publish_event_card, publish_list, send_to_another_bot, send_to_user
+from bot_comms import publish_event_card, publish_list, send_to_another_bot, send_to_user, send_to_me
 from bot_utils import tool_description, tool_error
 
 from O365 import Account
@@ -66,11 +66,13 @@ def check_for_upcomming_event():
             if str_location == "":
                 str_location = 'No location'
             if str_attendees:
-                send_to_user(f"You have a meeting starting in {event.remind_before_minutes} about {event.subject} with {event.organizer} and {str_attendees}")
-                send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting about {event.subject} in {str_location} with {event.organizer} and {str_attendees}")
+                send_to_user(f"You have a meeting starting in {event.remind_before_minutes}min about {event.subject} with {event.organizer} and {str_attendees}. Let me search for any relevent emails")
+                send_to_me(f"please find any emails relating to {event.subject}")
+                send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting at {event.start.astimezone(timezone)} about {event.subject} in {str_location} with {event.organizer} and {str_attendees}")
             else:
-                send_to_user(f"You have a meeting starting in {event.remind_before_minutes} about {event.subject} with {event.organizer}")
-                send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting about {event.subject} in {str_location} with {event.organizer}")
+                send_to_user(f"You have a meeting starting in {event.remind_before_minutes}min about {event.subject} with {event.organizer}. Let me search for any relevent emails")
+                send_to_me(f"please find any emails relating to {event.subject}")
+                send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting {event.start.astimezone(timezone)} about {event.subject} in {str_location} with {event.organizer}")
             sent_reminders.add(event.object_id)
 
 class MSGetCalendarEvents(BaseTool):

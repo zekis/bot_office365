@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Type
 import bot_logging
 
 from bot_comms import publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_me, publish_event_card, send_to_user, send_to_another_bot
-from bot_utils import tool_description, tool_error
+from bot_utils import tool_description, tool_error, sanitize_subject
 #from common.card_factories import create_list_card
 
 from O365 import Account
@@ -176,12 +176,13 @@ def get_message(ObjectID):
     return returned_email
 
 def search_emails_return_unique_conv(search_query):
+    clean_search_query = search_query.replace('"', "")
     tool_logger.info(f"Query: {search_query}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
 
-    query = inbox.new_query().search(search_query)
+    query = inbox.new_query().search(clean_search_query)
     emails = inbox.get_messages(limit=15, query=query)
 
     count = 0
@@ -194,6 +195,7 @@ def search_emails_return_unique_conv(search_query):
                 final_response.append(format_email_header(email))  # Only append if conversation_id is unique
         return final_response
     return None
+    
 
 def search_emails(search_query):
     account = authenticate()
@@ -698,7 +700,7 @@ class MSSearchEmailsId(BaseTool):
     optional_parameters = []
     name = "SEARCH_EMAILS"
     summary = """useful for when you need to search through emails and get their content. This tool only returns 15 emails maximum."""
-    parameters.append({"name": "query", "description": "query must use the Keyword Query Language (KQL) syntax. Example query: from:Dan AND received:2023-05-19..2023-05-20"})
+    parameters.append({"name": "query", "description": "query must use the Keyword Query Language (KQL) syntax. Example query: subject:Meeting or from:Dan AND received:2023-05-19..2023-05-20. Do not enclose strings in quotes"})
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
