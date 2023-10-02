@@ -8,7 +8,7 @@ import common.bot_logging
 
 from typing import Any, Dict, Optional, Type
 from langchain.text_splitter import CharacterTextSplitter
-from botbuilder.schema import ChannelAccount, CardAction, ActionTypes, SuggestedActions
+#from botbuilder.schema import ChannelAccount, CardAction, ActionTypes, SuggestedActions
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import (
     AIMessage,

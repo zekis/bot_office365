@@ -23,13 +23,14 @@ class Forward(BaseTool):
     optional_parameters = []
     name = "FORWARD"
     summary = """Useful to forward request on to another bot"""
-    parameters.append({"name": "request", "description": "original reqeuest"})
+    parameters.append({"name": "to", "description": "rough description of the the bot that needs to take over"})
+    parameters.append({"name": "task", "description": "original reqeuest"})
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = True
 
-    def _run(self, request: str, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, to: str, request: str, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
-            send_to_another_bot("",request)
+            send_to_another_bot("",f"{to} Task: {request}")
             
         except Exception as e:
             #traceback.print_exc()
