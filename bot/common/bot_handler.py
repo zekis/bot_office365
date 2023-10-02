@@ -2,7 +2,7 @@ import traceback
 import re
 import json
 import bot_config
-import bot_logging
+import common.bot_logging
 
 from langchain.callbacks.base import BaseCallbackHandler
 from typing import Any, Dict, List, Optional, Union
@@ -11,11 +11,11 @@ from langchain.input import print_text
 from langchain.schema import AgentAction, AgentFinish, LLMResult
 
 # import pika
-handler_logger = bot_logging.logging.getLogger('BotHandler')
-handler_logger.addHandler(bot_logging.file_handler)
+handler_logger = common.bot_logging.logging.getLogger('BotHandler')
+handler_logger.addHandler(common.bot_logging.file_handler)
 "This module handles sending and recieving between server and bots"
 
-from bot_comms import send_to_user
+from common.bot_comms import send_to_user
 
 
 class RabbitHandler(BaseCallbackHandler):

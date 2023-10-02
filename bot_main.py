@@ -40,8 +40,7 @@ async def heartbeat_loop():
         
 
 async def main():
-    bot_config.BOT_ID = "office365"
-    bot_config.BOT_DESCRIPTION = "office 365 emails, tasks, and calander manager"
+    
     
 
     logger = bot_logging.logging.getLogger('Bot_365') 

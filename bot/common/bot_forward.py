@@ -1,20 +1,20 @@
 import traceback
 import bot_config
-import bot_logging
+import common.bot_logging
 
 from datetime import datetime
 from typing import Any, Dict, Optional, Type
 
-from bot_comms import publish_event_card, publish_list, send_to_another_bot
-from bot_utils import tool_description, tool_error
+from common.bot_comms import publish_event_card, publish_list, send_to_another_bot, publish_error
+from common.bot_utils import tool_description, tool_error
 
 
 from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain.tools import BaseTool
 
 
-tool_logger = bot_logging.logging.getLogger('ToolLogger')
-tool_logger.addHandler(bot_logging.file_handler)
+tool_logger = common.bot_logging.logging.getLogger('ToolLogger')
+tool_logger.addHandler(common.bot_logging.file_handler)
 
 
 
@@ -34,6 +34,7 @@ class Forward(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:

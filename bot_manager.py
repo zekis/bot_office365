@@ -193,9 +193,10 @@ def register_self():
     required_credentials.append(('app_id', 'The Microsoft Application ID. This app must be given permission to access emails and tasks'))
     required_credentials.append(('app_secret', 'The Microsoft Application secrect key'))
     required_credentials.append(('folder_to_monitor', 'This is the folder that the bot will monitor for incoming emails, If you are not sure, just enter inbox'))
+    required_credentials.append(('ignore_domains', 'This a comma seperated list of domains to ignore'))
     
     register_package = {
-        'description': 'BOT_DESCRIPTION',  # Replace with actual description
+        'description': bot_config.BOT_DESCRIPTION,
         'required_credentials': required_credentials
     }
     send_to_dispatcher("register", register_package)

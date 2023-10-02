@@ -1,13 +1,13 @@
 import traceback
 import bot_config
-import bot_logging
+import common.bot_logging
 
 from datetime import datetime, timedelta
 import pytz
 from typing import Any, Dict, Optional, Type
 
-from bot_comms import publish_event_card, publish_list, send_to_another_bot, send_to_user, send_to_me
-from bot_utils import tool_description, tool_error
+from common.bot_comms import publish_event_card, publish_list, send_to_another_bot, send_to_user, send_to_me, publish_error
+from common.bot_utils import tool_description, tool_error
 
 from O365 import Account
 
@@ -15,8 +15,8 @@ from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, Callback
 from langchain.tools import BaseTool
 
 
-tool_logger = bot_logging.logging.getLogger('ToolLogger')
-tool_logger.addHandler(bot_logging.file_handler)
+tool_logger = common.bot_logging.logging.getLogger('ToolLogger')
+tool_logger.addHandler(common.bot_logging.file_handler)
 
 def authenticate():
     credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
@@ -61,7 +61,7 @@ def check_for_upcomming_event():
         if (reminder_time < datetime.now(timezone) and event.is_all_day == False and event.is_reminder_on and event.object_id not in sent_reminders):
             str_attendees = ""
             for attendee in event.attendees:
-                str_attendees = attendee + "," + str_attendees
+                str_attendees = str(attendee) + "," + str_attendees
             str_location = event.location.get('displayName')
             if str_location == "":
                 str_location = 'No location'
@@ -115,6 +115,7 @@ class MSGetCalendarEvents(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -152,7 +153,9 @@ class MSGetCalendarEvent(BaseTool):
             
         except Exception as e:
             #traceback.print_exc()
+
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -218,6 +221,7 @@ class MSCreateCalendarEvent(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:

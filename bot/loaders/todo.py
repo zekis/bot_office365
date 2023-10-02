@@ -1,21 +1,21 @@
 import traceback
 import bot_config
-import bot_logging
+import common.bot_logging
 
 from datetime import datetime, timedelta
 from dateutil import parser
 from typing import Any, Dict, Optional, Type
 
-from bot_comms import publish_todo_card, publish_list, publish_folder_list, send_to_user, send_to_another_bot
-from bot_utils import tool_description, tool_error, sanitize_subject
+from common.bot_comms import publish_todo_card, publish_list, publish_folder_list, send_to_user, send_to_another_bot, publish_error
+from common.bot_utils import tool_description, tool_error, sanitize_subject
 
 from O365 import Account
 
 from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain.tools import BaseTool
 
-tool_logger = bot_logging.logging.getLogger('ToolLogger')
-tool_logger.addHandler(bot_logging.file_handler)
+tool_logger = common.bot_logging.logging.getLogger('ToolLogger')
+tool_logger.addHandler(common.bot_logging.file_handler)
 
 def authenticate():
     credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
@@ -95,7 +95,7 @@ def scheduler_get_task_due_today(folder):
         due_date = task.due
         #print(f"{task.subject} - Due: {due_date}")
         if due_date:
-            if datetime.now().astimezone() - due_date  > timedelta(hours=8):
+            if datetime.now().astimezone() - due_date  > timedelta(hours=5):
                 return task
     return None
 
@@ -176,6 +176,7 @@ class MSGetTasks(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -231,6 +232,7 @@ class MSGetTaskDetail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -306,6 +308,7 @@ class MSCreateTaskFolder(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -353,6 +356,7 @@ class MSSetTaskComplete(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -422,6 +426,7 @@ class MSCreateTask(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -463,6 +468,7 @@ class MSDeleteTask(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
 
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -526,6 +532,7 @@ class MSUpdateTask(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
 
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:

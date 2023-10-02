@@ -5,8 +5,9 @@ import os
 load_dotenv()
 
 DISPATCHER_CHANNEL_ID = "botmanager"
-BOT_ID = ""
-BOT_DESCRIPTION = ""
+BOT_ID = "office365"
+BOT_DESCRIPTION = "office 365 emails, tasks, and calander manager"
+
 
 
 APP_ID = os.getenv("MicrosoftAppId")

@@ -3,10 +3,10 @@ import bot_config
 import pika
 import json
 import time 
-import bot_logging
+import common.bot_logging
 
 
-from bot_cards import (
+from common.bot_cards import (
     create_draft_email_card, 
     create_draft_forward_email_card, 
     create_draft_reply_email_card, 
@@ -16,11 +16,12 @@ from bot_cards import (
     create_folder_list_card, 
     create_media_card,
     create_todo_card,
-    create_input_card
+    create_input_card,
+    create_error_card
 )
 
-comms_logger = bot_logging.logging.getLogger('BotComms')
-comms_logger.addHandler(bot_logging.file_handler)
+comms_logger = common.bot_logging.logging.getLogger('BotComms')
+comms_logger.addHandler(common.bot_logging.file_handler)
 "This module handles sending and recieving between server and bots"
 
 
@@ -175,6 +176,32 @@ def from_bot_to_bot_manager(command: str, data: str):
 
     message_channel.basic_publish(exchange='',routing_key=bot_id,body=message)
 
+def publish_error(error, trace):
+    
+    channel_id = bot_config.DISPATCHER_CHANNEL_ID
+    bot_id = bot_config.BOT_ID
+    user_id = bot_config.USER_ID
+
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+
+    message_channel = connection.channel()
+
+    message_channel.queue_declare(queue=channel_id)
+
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {message} - {strings_values}")
+
+
+    #convert string to dict (hopefully our AI has formatted it correctly)
+    try:
+        cards = create_error_card(bot_id, error, trace)
+        #cards = create_list_card("Choose an option:", [("Option 1", "1"), ("Option 2", "2"), ("Option 3", "3")])
+    except Exception as e:
+        traceback.print_exc()
+        cards = None
+    
+    message = encode_response(bot_id, user_id, bot_id, "cards", cards)
+
+    message_channel.basic_publish(exchange='',routing_key=channel_id,body=message)
 
 def publish_list(message,strings_values):
     

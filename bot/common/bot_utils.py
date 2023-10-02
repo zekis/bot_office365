@@ -4,7 +4,7 @@ import re
 import bot_config
 import nltk
 import os
-import bot_logging
+import common.bot_logging
 
 from typing import Any, Dict, Optional, Type
 from langchain.text_splitter import CharacterTextSplitter
@@ -23,8 +23,8 @@ text_splitter = CharacterTextSplitter(
     length_function = len,
 )
 
-util_logger = bot_logging.logging.getLogger('UtilLogger')
-util_logger.addHandler(bot_logging.file_handler)
+util_logger = common.bot_logging.logging.getLogger('UtilLogger')
+util_logger.addHandler(common.bot_logging.file_handler)
 
 def validate_response(string):
     text_splitter = CharacterTextSplitter.from_tiktoken_encoder(chunk_size=2000, chunk_overlap=0)

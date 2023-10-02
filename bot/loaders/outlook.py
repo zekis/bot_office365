@@ -3,10 +3,10 @@ import bot_config
 import os
 from datetime import datetime
 from typing import Any, Dict, Optional, Type
-import bot_logging
+import common.bot_logging
 
-from bot_comms import publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_me, publish_event_card, send_to_user, send_to_another_bot
-from bot_utils import tool_description, tool_error, sanitize_subject
+from common.bot_comms import publish_email_card, publish_list, publish_draft_card, publish_draft_forward_card, send_to_me, publish_event_card, send_to_user, send_to_another_bot, publish_error
+from common.bot_utils import tool_description, tool_error, sanitize_subject
 #from common.card_factories import create_list_card
 
 from O365 import Account
@@ -27,8 +27,8 @@ from langchain.schema import (
     SystemMessage
 )
 
-tool_logger = bot_logging.logging.getLogger('ToolLogger')
-tool_logger.addHandler(bot_logging.file_handler)
+tool_logger = common.bot_logging.logging.getLogger('ToolLogger')
+tool_logger.addHandler(common.bot_logging.file_handler)
 example_email_format = """
 
 <body>
@@ -62,7 +62,7 @@ def get_email_summary(email, body_soup):
     try:
         os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
         chat = ChatOpenAI(temperature=0, model_name=bot_config.TOOL_AI)
-        query = f"""Provide a abbreviated version of the latest message in the email chain, and conversation history, into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
+        query = f"""Provide a summary of the latest response in this email chain (chain is ordered newest to oldest, newest at the top), and conversation history (below), into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
         To: {str_to_address}, From: {email.sender.address}, Subject: {email.subject}, Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}, Body: {body_soup}"""
 
         tool_logger.info(f"Query: {query}")
@@ -380,13 +380,16 @@ def scheduler_check_emails():
     
     if emails:
         for email in emails:
+            domain = email.sender.address.split('@')[1]
             if not email.is_event_message:
-                summary = get_email_summary(email, clean_html(email.body))
-                
-                
-                #Determine Type and Intent of Email
-                review_email(email, summary)
-                
+                if domain not in bot_config.IGNORE_DOMAINS:
+                    summary = get_email_summary(email, clean_html(email.body))
+                    
+                    
+                    #Determine Type and Intent of Email
+                    review_email(email, summary)
+                else:
+                    send_to_user(f"Ignoring email from {email.sender.address} as domain is in the ignore list")
                 #Always mark email read, or we end up reviewing the same email forever.
                 email.mark_as_read()
                 
@@ -571,6 +574,7 @@ def task_reply_or_ignore(email, summary):
     except Exception as e:
         #traceback.print_exc()
         tb = traceback.format_exc()
+        publish_error(e, tb)
         return tool_error(e, tb)
         
 def get_email_type(email, summary):
@@ -606,6 +610,7 @@ def get_email_type(email, summary):
     except Exception as e:
         #traceback.print_exc()
         tb = traceback.format_exc()
+        publish_error(e, tb)
         return tool_error(e, tb)
 
 def get_email_intent(email, summary):
@@ -693,6 +698,7 @@ description: Unwanted or suspicious emails.
     except Exception as e:
         #traceback.print_exc()
         tb = traceback.format_exc()
+        publish_error(e, tb)
         return tool_error(e, tb)
 
 class MSSearchEmailsId(BaseTool):
@@ -730,6 +736,7 @@ class MSSearchEmailsId(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -777,6 +784,7 @@ class MSGetEmailDetail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -815,6 +823,7 @@ class MSDraftEmail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -847,6 +856,7 @@ class MSSendEmail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -878,6 +888,7 @@ class MSReplyToEmail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -909,6 +920,7 @@ class MSForwardEmail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -951,6 +963,7 @@ class MSDraftForwardEmail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:
@@ -995,6 +1008,7 @@ class MSDraftReplyToEmail(BaseTool):
         except Exception as e:
             #traceback.print_exc()
             tb = traceback.format_exc()
+            publish_error(e, tb)
             return tool_error(e, tb, self.description)
     
     async def _arun(self, query: str, run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> str:

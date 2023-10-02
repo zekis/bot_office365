@@ -7,15 +7,15 @@ from datetime import datetime
 import asyncio
 import threading
 
-import bot_logging
+import common.bot_logging
 import bot_config
 from bot_main import aiBot
 #from bot_comms import publish, publish_action, publish_actions
 
 
-from bot_comms import send_to_user
-logger = bot_logging.logging.getLogger('BotInstance') 
-logger.addHandler(bot_logging.file_handler)
+from common.bot_comms import send_to_user
+logger = common.bot_logging.logging.getLogger('BotInstance') 
+logger.addHandler(common.bot_logging.file_handler)
 
 
 async def heartbeat_scheduler(bot):
