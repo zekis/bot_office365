@@ -13,7 +13,7 @@ APP_ID = os.getenv("MicrosoftAppId")
 APP_PASSWORD = os.getenv("MicrosoftAppPassword")
 
 Todo_PollingIntervalSeconds = float(os.getenv("Todo_PollingIntervalSeconds",60.0))
-Todo_BotsTaskFolder = 'Bot Tasks'
+#Todo_BotsTaskFolder = 'Bot Tasks'
 
 DATA_DIR = "data"
 
@@ -28,6 +28,9 @@ APP_SECRET = ""
 
 FOLDER_TO_MONITOR = ""
 IGNORE_DOMAINS = ""
+AUTO_DRAFT_REPLY = "no"
+AUTO_READ_EMAILS = "no"
+TIME_ZONE = ""
 
 RESET_CONFIG = False
 VERBOSE = True

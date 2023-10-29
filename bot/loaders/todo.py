@@ -1,11 +1,14 @@
+import sys
 import traceback
 import bot_config
-import common.bot_logging
+
 
 from datetime import datetime, timedelta
 from dateutil import parser
 from typing import Any, Dict, Optional, Type
 
+sys.path.append("/root/projects")
+import common.bot_logging
 from common.bot_comms import publish_todo_card, publish_list, publish_folder_list, send_to_user, send_to_another_bot, publish_error
 from common.bot_utils import tool_description, tool_error, sanitize_subject
 
@@ -14,8 +17,8 @@ from O365 import Account
 from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, CallbackManagerForToolRun
 from langchain.tools import BaseTool
 
-tool_logger = common.bot_logging.logging.getLogger('ToolLogger')
-tool_logger.addHandler(common.bot_logging.file_handler)
+#common.bot_logging.bot_logger = common.bot_logging.logging.getLogger('ToolLogger')
+#common.bot_logging.bot_logger.addHandler(common.bot_logging.file_handler)
 
 def authenticate():
     credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
@@ -86,6 +89,7 @@ def scheduler_get_task_due_today(folder):
         folder = todo.get_folder(folder_name=folder)
     except:
         #Later I will call the AI to create the folder
+        common.bot_logging.bot_logger.warn(f"Problem gettings tasks from task folder {folder}")
         return None
     query = folder.new_query()
     query = query.on_attribute('status').unequal('completed')
@@ -106,7 +110,7 @@ def scheduler_get_bots_unscheduled_task(folder):
         folder = todo.get_folder(folder_name=folder)
     except:
         #Later I will call the AI to create the folder
-        return "Need to create the AutoCHAD task folder"
+        return None
     query = folder.new_query()
     query = query.on_attribute('status').unequal('completed')
     todo_list = folder.get_tasks(query)

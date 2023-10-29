@@ -1,11 +1,14 @@
+import sys
 import traceback
 import bot_config
-import common.bot_logging
+
 
 from datetime import datetime, timedelta
 import pytz
 from typing import Any, Dict, Optional, Type
 
+sys.path.append("/root/projects")
+import common.bot_logging
 from common.bot_comms import publish_event_card, publish_list, send_to_another_bot, send_to_user, send_to_me, publish_error
 from common.bot_utils import tool_description, tool_error
 
@@ -15,8 +18,8 @@ from langchain.callbacks.manager import AsyncCallbackManagerForToolRun, Callback
 from langchain.tools import BaseTool
 
 
-tool_logger = common.bot_logging.logging.getLogger('ToolLogger')
-tool_logger.addHandler(common.bot_logging.file_handler)
+#common.bot_logging.bot_logger = common.bot_logging.logging.getLogger('ToolLogger')
+#common.bot_logging.bot_logger.addHandler(common.bot_logging.file_handler)
 
 def authenticate():
     credentials = (bot_config.APP_ID, bot_config.APP_PASSWORD)
@@ -46,22 +49,26 @@ def get_event(eventID):
     return event
 
 sent_reminders = set()
-#Todo, add loop to check for upcomming meetings and create journal entries for this
+"""loop to check for upcomming meetings and create journal entries"""
 def check_for_upcomming_event():
     global sent_reminders
-    #todo make timezone configurable
-    timezone = pytz.timezone('Australia/Perth')
+    
+    timezone = pytz.timezone(bot_config.TIME_ZONE)
     start_date = datetime.now(timezone)
     end_date = datetime.now(timezone) + timedelta(hours=12)
+
     events = search_calendar(start_date, end_date)
-    tool_logger.debug(f"Checking events between {start_date} and {end_date}")
+
+    common.bot_logging.bot_logger.debug(f"Checking events between {start_date} and {end_date}")
+
     for event in events:
         reminder_time = event.start.astimezone(timezone) - timedelta(minutes=event.remind_before_minutes)
-        #tool_logger.info(f"Checking event {event.subject} starting {reminder_time}")
+        #common.bot_logging.bot_logger.info(f"Checking event {event.subject} starting {reminder_time}")
         if (reminder_time < datetime.now(timezone) and event.is_all_day == False and event.is_reminder_on and event.object_id not in sent_reminders):
-            str_attendees = ""
-            for attendee in event.attendees:
-                str_attendees = str(attendee) + "," + str_attendees
+            #str_attendees = ""
+            str_attendees = get_string_from_list(event.attendees, 10)
+            # for attendee in event.attendees:
+            #     str_attendees = str(attendee) + "," + str_attendees
             str_location = event.location.get('displayName')
             if str_location == "":
                 str_location = 'No location'
@@ -75,26 +82,45 @@ def check_for_upcomming_event():
                 send_to_another_bot('journal',f"add to my journal a heading and subheading of details to keep my notes for the meeting {event.start.astimezone(timezone)} about {event.subject} in {str_location} with {event.organizer}")
             sent_reminders.add(event.object_id)
 
+"""This function trunctes lists as strings"""
+def get_string_from_list(address_list, max_contacts):
+    if len(address_list) > max_contacts:
+        truncated_count = len(address_list) - max_contacts
+        return ", ".join([addr.address for addr in address_list[:max_contacts]]) + f", ... {truncated_count} others"
+    else:
+        return ", ".join([addr.address for addr in address_list])
+
+
+
 class MSGetCalendarEvents(BaseTool):
     parameters = []
     optional_parameters = []
     name = "GET_CALENDAR_EVENTS"
     summary = """Useful for when you need to retrieve meetings and appointments."""
-    parameters.append({"name": "start_date", "description": "event start date time format as %Y-%m-%d"})
-    parameters.append({"name": "end_date", "description": "event end date time format as %Y-%m-%d"})
+    parameters.append({"name": "start_date", "description": "event start date time format as %Y-%m-%d %H:%M:%S"})
+    parameters.append({"name": "end_date", "description": "event end date time format as %Y-%m-%d %H:%M:%S"})
     description = tool_description(name, summary, parameters, optional_parameters)
     return_direct = False
 
     def _run(self, start_date: str, end_date: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+        common.bot_logging.bot_logger.info(f"Searching for events between {start_date} and {end_date}")
         try:
             ai_summary = ""
             human_summary = []
-            if not end_date:
-                end_date = start_date
+            if not end_date or start_date == end_date:
+                start_date_format = '%Y-%m-%d'
+                # Convert start_date string to datetime object
+                start_date = datetime.strptime(start_date, start_date_format)
+                # Add 12 hours to start_date
+                end_date = start_date + timedelta(hours=24)
+                # If you need end_date as a string in the same format
+                end_date = end_date.strftime(start_date_format)
 
             events = search_calendar(start_date, end_date)
+            
             if events:
                 for event in events:
+                    common.bot_logging.bot_logger.info(event)
                     ai_summary = ai_summary + " - Event: " + event.subject + ", At " + event.start.strftime("%A, %B %d, %Y at %I:%M %p") + "\n"
                     title = event.subject + " - " + event.start.strftime("%A, %B %d, %Y at %I:%M %p")
                     value = "Please use the GET_CALENDAR_EVENT tool using ID: " + event.object_id

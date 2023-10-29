@@ -26,6 +26,8 @@ TENANT_ID = os.getenv("tenant_id")
 USER_ID = ""
 FRIENDLY_NAME = ""
 OFFICE_USER = os.getenv("OFFICE_USER")
+TODO_BOT_FOLDER = ""
+
 
 RESET_CONFIG = False
 VERBOSE = True

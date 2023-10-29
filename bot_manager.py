@@ -3,7 +3,6 @@ import os
 import signal
 import bot_config
 import datetime
-from user_manager import UserManager
 import bot_logging
 from bot_comms import from_dispatcher, send_to_dispatcher, send_to_user, clear_queue, send_to_instance, send_credentials_to_instance
 
@@ -19,7 +18,7 @@ class BotManager:
 
     def handle_instance(self, user_id):
         bot_instance_channel = bot_config.BOT_ID + user_id
-
+        current_path = os.getcwd()
         if user_id in self.user_processes and self.user_processes[user_id].poll() is None:
             bot_logger.info(f"Bot is already running for user {user_id}")
             """do nothing"""
@@ -27,13 +26,13 @@ class BotManager:
         else:
             bot_logger.info(f"Starting bot for user {user_id}...")
             clear_queue(bot_instance_channel)
-            process = subprocess.Popen(['python', './bot/bot.py', user_id, bot_config.BOT_ID])
+            process = subprocess.Popen([f'{current_path}/.venv/bin/python', f'./bot/bot.py', user_id, bot_config.BOT_ID])
             self.user_processes[user_id] = process
             return
 
     def stop_all_processes(self):
         """Stop all running bots."""
-        for process in self.user_processes.items():
+        for key, process in self.user_processes.items():
             if process.poll() is None:  # Check if the process is running
                 bot_logger.warn(f"Stopping bots")
                 process.terminate()
@@ -58,7 +57,7 @@ class BotManager:
 
 
 botManager = BotManager()
-userManager = UserManager(bot_config.DATA_DIR)
+# userManager = UserManager(bot_config.DATA_DIR)
 last_server_contact = datetime.datetime.now()
 server_contact = False
 
@@ -96,8 +95,10 @@ async def process_server_message():
                 last_server_contact = current_time
                 bot_config.HEARTBEAT_SEC = bot_config.HEARTBEAT_NORMAL_SEC
             
-            # ... [the beginning of your function remains unchanged]
-
+            if command == "unknown_bot_id":
+                server_contact = True
+                register_self()
+            
         
             if command == "heartbeat":
                 # Update the last_bot_contact time for known bots
@@ -128,6 +129,11 @@ async def process_server_message():
                 send_to_user(user_id, f"stopping bot instance...")
                 botManager.stop_instance(user_id)
                 return False
+            if prompt == 'stop_all':
+                send_to_user(user_id, f"stopping all bot instances...")
+                botManager.stop_all_processes()
+                return False
+
             if prompt == 'status':
                 if user_id in botManager.user_processes:
                     last_bot_contact = botManager.user_processes[user_id].last_bot_contact
@@ -155,21 +161,24 @@ async def process_server_message():
                 send_credentials_to_instance(user_id, credentials)
                 return False
 
+            if prompt == 'heartbeat':
+                return False
 
-            send_to_user(user_id, f"thinking...")
+
+            #send_to_user(user_id, f"thinking...")
             botManager.handle_instance(user_id)
             #always send credentials first
             send_credentials_to_instance(user_id, credentials)
             send_to_instance(user_id, prompt)
 
            
-    if (current_time - last_server_contact).total_seconds() > float(bot_config.SERVER_TIMOUT_SEC) and server_contact == True:
-        bot_logger.warn(f"Server connection lost")
-        server_contact = False
-        #register every second until True (Server clears messages on startup)
-        bot_config.HEARTBEAT_SEC = bot_config.HEARTBEAT_RETRY_SEC
-        #kill all bots
-        botManager.stop_all_processes()
+    # if (current_time - last_server_contact).total_seconds() > float(bot_config.SERVER_TIMOUT_SEC) and server_contact == True:
+    #     bot_logger.warn(f"Server connection lost")
+    #     server_contact = False
+    #     #register every second until True (Server clears messages on startup)
+    #     bot_config.HEARTBEAT_SEC = bot_config.HEARTBEAT_RETRY_SEC
+    #     #kill all bots
+    #     botManager.stop_all_processes()
                 
     # for process in user_processes:
     #     if (current_time - process.last_bot_contact).total_seconds() > float(bot_config.BOT_TIMEOUT_SEC):
@@ -194,6 +203,10 @@ def register_self():
     required_credentials.append(('app_secret', 'The Microsoft Application secrect key'))
     required_credentials.append(('folder_to_monitor', 'This is the folder that the bot will monitor for incoming emails, If you are not sure, just enter inbox'))
     required_credentials.append(('ignore_domains', 'This a comma seperated list of domains to ignore'))
+    required_credentials.append(('auto_draft_reply', 'yes/no setting determines if the bot automatically creates drafts for emails received'))
+    required_credentials.append(('time_zone', "Country/City. example, Australia/Perth"))
+    required_credentials.append(('bots_todo_folder', 'This is the MS todo task folder that the bot will monitor for jobs'))
+    required_credentials.append(('auto_read_emails', 'yes/no setting determines if the bot automatically monitors your inbox'))
     
     register_package = {
         'description': bot_config.BOT_DESCRIPTION,
@@ -203,7 +216,9 @@ def register_self():
     # send_to_dispatcher(bot_con, bot_id, command, data)
 
 
-
+def heartbeat():
+    send_to_dispatcher("heartbeat", None)
+    # send_to_dispatcher(bot_con, bot_id, command, data)
 
 
 
