@@ -63,7 +63,7 @@ def check_for_upcomming_event():
 
     for event in events:
         reminder_time = event.start.astimezone(timezone) - timedelta(minutes=event.remind_before_minutes)
-        #common.bot_logging.bot_logger.info(f"Checking event {event.subject} starting {reminder_time}")
+        #common.bot_logging.bot_logger.debug(f"Checking event {event.subject} starting {reminder_time}")
         if (reminder_time < datetime.now(timezone) and event.is_all_day == False and event.is_reminder_on and event.object_id not in sent_reminders):
             #str_attendees = ""
             str_attendees = get_string_from_list(event.attendees, 10)
@@ -103,7 +103,7 @@ class MSGetCalendarEvents(BaseTool):
     return_direct = False
 
     def _run(self, start_date: str, end_date: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
-        common.bot_logging.bot_logger.info(f"Searching for events between {start_date} and {end_date}")
+        common.bot_logging.bot_logger.debug(f"Searching for events between {start_date} and {end_date}")
         try:
             ai_summary = ""
             human_summary = []
@@ -120,7 +120,7 @@ class MSGetCalendarEvents(BaseTool):
             
             if events:
                 for event in events:
-                    common.bot_logging.bot_logger.info(event)
+                    common.bot_logging.bot_logger.debug(event)
                     ai_summary = ai_summary + " - Event: " + event.subject + ", At " + event.start.strftime("%A, %B %d, %Y at %I:%M %p") + "\n"
                     title = event.subject + " - " + event.start.strftime("%A, %B %d, %Y at %I:%M %p")
                     value = "Please use the GET_CALENDAR_EVENT tool using ID: " + event.object_id

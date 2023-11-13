@@ -124,7 +124,7 @@ def send_to_user(user_id: str, prompt: str):
     bot_id = bot_config.BOT_ID
 
 
-    comms_logger.info(f"CHANNEL: {channel_id} - {user_id} - {prompt}")
+    comms_logger.debug(f"CHANNEL: {channel_id} - {user_id} - {prompt}")
 
     # connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
@@ -141,7 +141,7 @@ def send_to_instance(user_id: str, prompt: str):
     bot_instance_channel = bot_config.BOT_ID + user_id
     
 
-    comms_logger.info(f"CHANNEL: {bot_instance_channel} - {user_id} - {prompt}")
+    comms_logger.debug(f"CHANNEL: {bot_instance_channel} - {user_id} - {prompt}")
 
     # connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
@@ -159,7 +159,7 @@ def send_credentials_to_instance(user_id: str, credentials: list):
     "encode and send a message directly to a bot using <channel_id>"
     bot_instance_channel = bot_config.BOT_ID + user_id
 
-    comms_logger.info(f"CHANNEL: {bot_instance_channel} - {user_id} - {credentials}")
+    comms_logger.debug(f"CHANNEL: {bot_instance_channel} - {user_id} - {credentials}")
 
     # connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
@@ -174,7 +174,7 @@ def send_credentials_to_instance(user_id: str, credentials: list):
 
 def clear_queue(channel_id: str):
     "clear message queue (do this on start)"
-    comms_logger.info("Clearing message queue")
+    comms_logger.debug("Clearing message queue")
 
     # connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 

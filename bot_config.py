@@ -37,8 +37,8 @@ HEARTBEAT_SEC = 1.0
 HEARTBEAT_RETRY_SEC = 1.0
 SERVER_TIMOUT_SEC = 20.0
 
-MAIN_AI = "gpt-3.5-turbo-16k"
-TOOL_AI = "gpt-3.5-turbo-16k"
+MAIN_AI = "gpt-4-1106-preview"
+TOOL_AI = "gpt-4-1106-preview"
 
 PARAMETER_PUBLISH = {"name": "publish", "description": "set to 'True' to publish as a nicely formatted human readable teams card, 'False' to return the raw data back to AI" }
 PROMPT_PUBLISH_TRUE = "Output returned directly to human as a Teams Card. To retrieve the IDs and raw data, set 'publish' key to 'False'"

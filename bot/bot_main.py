@@ -40,7 +40,7 @@ class aiBot:
     def __init__(self):
         #common.bot_logging.bot_logger = common.bot_logging.logging.getLogger('BotInstance') 
         #common.bot_logging.bot_logger.addHandler(common.bot_logging.file_handler)
-        common.bot_logging.bot_logger.info(f"Init Bot Instance")
+        # common.bot_logging.bot_logger.debug(f"Init Bot Instance")
         self.credentials = []
         self.initialised = False
         self.pause_schedule = False
@@ -49,7 +49,7 @@ class aiBot:
         #Init AI
         if not self.initialised:
             os.environ["OPENAI_API_KEY"] = bot_config.OPENAI_API_KEY
-            self.llm = ChatOpenAI(model_name=bot_config.MAIN_AI, temperature=0, verbose=True)
+            self.llm = ChatOpenAI(model_name=bot_config.MAIN_AI, temperature=0.2, verbose=True)
             self.handler = RabbitHandler()
             self.tools = self.load_tools(self.llm)
 
@@ -61,13 +61,10 @@ class aiBot:
             self.agent_executor = initialize_agent(
                 tools=self.tools,
                 llm=self.llm,
-                agent=AgentType.OPENAI_FUNCTIONS,
+                agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
                 verbose=True,
-                max_iterations=5, 
-                agent_kwargs = {
-                    "memory_prompts": [self.chat_history],
-                    "input_variables": ["input", "agent_scratchpad", "chat_history"]
-                })
+                max_iterations=5
+                )
             self.initialised = True
 
     #Main Loop
@@ -129,7 +126,9 @@ class aiBot:
     def process_model(self, question):
         current_date_time = datetime.now()
         #inital_prompt = f"Previous conversation: {self.memory.buffer_as_str}" + f''', Thinking step by step and With only the tools provided and with the current date and time of {current_date_time} help the human with the following request, Request: {question} '''
-        inital_prompt = f'''With only the tools provided and the current date and time of {current_date_time} help the human with the following request, Request: {question} '''
+        # inital_prompt = f'''With only the tools provided and the current date and time of {current_date_time} help the human with the following request, Request: {question} '''
+        inital_prompt = f"""You are a researcher that finds information for the user and generates reports. Thinking step by step, With only the tools provided (If a tool isnt available, use the FORWARD tool to allow another assistant to complete the next step) and with the current date and time of {current_date_time} help the human with the following request, Request: {question}"""
+        common.bot_logging.bot_logger.info(inital_prompt)
         response = self.agent_executor.run(input=inital_prompt, callbacks=[self.handler])
         
         common.bot_logging.bot_logger.info(response)
@@ -144,8 +143,8 @@ class aiBot:
                 if task:
                     
                     try:
-                        #common.bot_logging.bot_logger.info(task)
-                        common.bot_logging.bot_logger.info(task.subject)
+                        #common.bot_logging.bot_logger.debug(task)
+                        common.bot_logging.bot_logger.debug(task.subject)
                         send_to_user(f"Looks like one of my tasks is due - {task.subject}")
                         current_date_time = datetime.now() 
                         
@@ -169,8 +168,8 @@ class aiBot:
                 if task:
                     
                     try:
-                        common.bot_logging.bot_logger.info(task)
-                        common.bot_logging.bot_logger.info(task.subject)
+                        common.bot_logging.bot_logger.debug(task)
+                        common.bot_logging.bot_logger.debug(task.subject)
                         send_to_user(f"Looks like one of my tasks is due - {task.subject}")
                         
                         current_date_time = datetime.now() 
@@ -205,9 +204,9 @@ class aiBot:
 
     def load_tools(self, llm) -> list():
         
-        tools = load_tools(["human"], input_func=get_input, prompt_func=send_prompt, llm=llm)
+        # tools = load_tools(["human"], input_func=get_input, prompt_func=send_prompt, llm=llm)
         
-        
+        tools = []
 
         tools.append(MSGetTaskFolders())
         tools.append(MSGetTasks())
@@ -235,7 +234,7 @@ class aiBot:
         return tools
     
     def get_credential(self, name):
-        common.bot_logging.bot_logger.info(f"Fetching credential for: {name}")
+        common.bot_logging.bot_logger.debug(f"Fetching credential for: {name}")
         for credential in self.credentials:
             if name in credential:
                 common.bot_logging.bot_logger.debug(credential[name])

@@ -26,8 +26,9 @@ from bot_manager import process_server_message, register_self, clear_heartbeats,
 
 async def main_loop():
     #logger.info("Start message processing")
+    await asyncio.sleep(5.0)
     clear_heartbeats()
-    #register_self()
+    register_self()
 
     while True:
         await process_server_message()
@@ -36,9 +37,9 @@ async def main_loop():
 async def heartbeat_loop():
     #logger.info("Start message processing")
     #register_self()
-
+    await asyncio.sleep(5.0)
     while True:
-        await asyncio.sleep(float(bot_config.HEARTBEAT_SEC))
+        await asyncio.sleep(30.0)
         heartbeat()
         
 
@@ -48,7 +49,7 @@ async def main():
     script_path = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_path)
 
-    logger = bot_logging.logging.getLogger('Bot_365') 
+    logger = bot_logging.logging.getLogger('O365') 
     logger.addHandler(bot_logging.file_handler)
     logger.info(f"Init Bot")
 

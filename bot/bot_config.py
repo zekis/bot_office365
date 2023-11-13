@@ -37,8 +37,8 @@ VERBOSE = True
 
 HEARTBEAT_SEC = 4.0
 
-MAIN_AI = "gpt-3.5-turbo-16k"
-TOOL_AI = "gpt-3.5-turbo-16k"
+MAIN_AI = "gpt-4"
+TOOL_AI = "gpt-4"
 SMART_AI = "gpt-4"
 
 PARAMETER_PUBLISH = {"name": "publish", "description": "set to 'True' to publish as a nicely formatted human readable teams card, 'False' to return the raw data back to AI" }

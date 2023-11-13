@@ -67,7 +67,7 @@ def get_email_summary(email, body_soup):
         query = f"""Provide a summary of the latest response in this email chain (chain is ordered newest to oldest, newest at the top), and conversation history (below), into two sections, ignoring capability statements and confidentiality disclaimers or anything after the signature for the following email
         To: {str_to_address}, From: {email.sender.address}, Subject: {email.subject}, Date: {email.received.strftime('%Y-%m-%d %H:%M:%S')}, Body: {body_soup}"""
 
-        common.bot_logging.bot_logger.info(f"Query: {query}")
+        common.bot_logging.bot_logger.debug(f"Query: {query}")
         email_response = chat([HumanMessage(content=query)]).content
         return email_response
     except Exception as e:
@@ -93,7 +93,7 @@ def reply_to_email_summary(summary, sender, example=None, comments=None, previou
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
     print(query)
-    common.bot_logging.bot_logger.info(f"Query: {query}")
+    common.bot_logging.bot_logger.debug(f"Query: {query}")
     email_response = llm.predict(query)
     return email_response
 
@@ -114,7 +114,7 @@ def forward_email_summary(summary, example=None, comments=None, previous_draft=N
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
 
-    common.bot_logging.bot_logger.info(f"Query: {query}")
+    common.bot_logging.bot_logger.debug(f"Query: {query}")
     email_response = llm.predict(query)
     return email_response
 
@@ -133,7 +133,7 @@ def modify_draft(body, comments, previous_draft=None):
     if previous_draft:
         query += f"Based on the previous draft: {previous_draft}"
 
-    common.bot_logging.bot_logger.info(f"Query: {query}")
+    common.bot_logging.bot_logger.debug(f"Query: {query}")
     email_response = llm.predict(query)
     return email_response
 
@@ -143,7 +143,7 @@ def get_conversation_sorted(ConversationID):
     inbox = mailbox.inbox_folder()
 
     query = inbox.new_query().on_attribute("receivedDateTime").greater(datetime(2023, 1, 1)).chain("and").on_attribute('conversationid').equals(ConversationID)
-    common.bot_logging.bot_logger.info(f"Query: {query}")
+    common.bot_logging.bot_logger.debug(f"Query: {query}")
     returned_emails = inbox.get_messages(limit=5,query=query, order_by="receivedDateTime desc")
     
     count = 0
@@ -158,7 +158,7 @@ def get_conversation(ConversationID):
     inbox = mailbox.inbox_folder()
 
     query = inbox.new_query().on_attribute('conversationid').equals(ConversationID)
-    common.bot_logging.bot_logger.info(f"Query: {query}")
+    common.bot_logging.bot_logger.debug(f"Query: {query}")
     returned_emails = inbox.get_messages(limit=1,query=query)
     
     count = 0
@@ -169,7 +169,7 @@ def get_conversation(ConversationID):
 
 # This function takes an `ObjectID` as input and returns the email associated with that ID.
 def get_message(ObjectID):
-    common.bot_logging.bot_logger.info(f"ObjectID: {ObjectID}")
+    common.bot_logging.bot_logger.debug(f"ObjectID: {ObjectID}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -179,7 +179,7 @@ def get_message(ObjectID):
 
 def search_emails_return_unique_conv(search_query):
     clean_search_query = search_query.replace('"', "")
-    common.bot_logging.bot_logger.info(f"Query: {search_query}")
+    common.bot_logging.bot_logger.debug(f"Query: {search_query}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -213,7 +213,7 @@ def search_emails(search_query):
     return None
 
 def create_email_reply(ConversationID, body, save=False):
-    common.bot_logging.bot_logger.info(f"Conversation ID: {ConversationID} | Body: {body}")
+    common.bot_logging.bot_logger.debug(f"Conversation ID: {ConversationID} | Body: {body}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -232,7 +232,7 @@ def create_email_reply(ConversationID, body, save=False):
     return reply_msg
 
 def create_email_forward(ConversationID, recipient, body, save=False):
-    common.bot_logging.bot_logger.info(f"Conversation ID: {ConversationID} | Recipient: {recipient} | Body: {body}")
+    common.bot_logging.bot_logger.debug(f"Conversation ID: {ConversationID} | Recipient: {recipient} | Body: {body}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -256,7 +256,7 @@ def create_email_forward(ConversationID, recipient, body, save=False):
 
 
 def draft_email(recipient, subject, body, user_improvements=None, previous_draft=None, save=True):
-    common.bot_logging.bot_logger.info(f"Recipient: {recipient} | Subject: {subject}")
+    common.bot_logging.bot_logger.debug(f"Recipient: {recipient} | Subject: {subject}")
     account = authenticate()
     mailbox = account.mailbox()
     inbox = mailbox.inbox_folder()
@@ -415,7 +415,7 @@ def review_email(email, summary):
             #next_action = task_reply_or_ignore(email, summary)
         
         else:
-            send_to_user(f"I have determined that this is a {email_type} email and will mark it as read and ignore it.")
+            send_to_user(f"I have determined that this email about {email.subject} from  {email.sender.address} is a {email_type} email and will mark it as read and ignore it.")
             return
     else:
         return
@@ -432,9 +432,9 @@ def review_email(email, summary):
 
     task_action_prompt = f"Please use the CREATE_TASK tool to create a task in the 'Tasks' folder with the subject {email.subject}, body to include steps to complete and url {link}, for {bot_config.FRIENDLY_NAME} to action."
     email_action_prompt = f"Given this email I just received from {str_to_address}, Please use the DRAFT_REPLY_TO_EMAIL tool using ConverstationID: {email.conversation_id} to draft a reply in HTML format to {str_to_address} from 'Chad the AI Assistant' on behalf of {bot_config.FRIENDLY_NAME} with helpfull tips and add a signature from 'Chad the AI Assistant'. Email Received: {ai_summary}"
-    #common.bot_logging.bot_logger.info("task_action_prompt: " + task_action_prompt)
-    #common.bot_logging.bot_logger.info("email_action_prompt: " + email_action_prompt)
-    common.bot_logging.bot_logger.info(intent)
+    #common.bot_logging.bot_logger.debug("task_action_prompt: " + task_action_prompt)
+    #common.bot_logging.bot_logger.debug("email_action_prompt: " + email_action_prompt)
+    common.bot_logging.bot_logger.debug(intent)
     
     if "INQUIRY/QUESTION" in intent:
         """ Emails where the sender is seeking information or clarification on a specific topic. """
@@ -556,7 +556,7 @@ def auto_reply(message, email_action_prompt):
 #         actions: {available_actions}
         
 #         email: {ai_summary}"""
-#         common.bot_logging.bot_logger.info(prompt)
+#         common.bot_logging.bot_logger.debug(prompt)
 
 #         agent_executor = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs = {
 #                 "input_variables": ["input", "agent_scratchpad"]
@@ -592,7 +592,7 @@ def get_email_type(email, summary):
         Types: {available_types}
         
         email: {ai_summary}"""
-        common.bot_logging.bot_logger.info(prompt)
+        common.bot_logging.bot_logger.debug(prompt)
 
         agent_executor = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, verbose=True, agent_kwargs = {
                 "input_variables": ["input", "agent_scratchpad"]
@@ -795,10 +795,12 @@ class MSDraftEmail(BaseTool):
     optional_parameters.append({"name": "user_improvements", "description": "Direct the draft email and can be used in combination with the previous_draft" })
     optional_parameters.append({"name": "previous_draft", "description": "To be used with the user_improvements" })
     description = tool_description(name, summary, parameters, optional_parameters)
-    return_direct = False
+    return_direct = True
 
     def _run(self, recipient: str, subject: str, body: str, user_improvements: str = None, previous_draft: str = None, publish: str = "True", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
+
+            publish = "true"
             response = draft_email(recipient, subject, body, user_improvements, previous_draft)
             ai_summary = format_email(response)
 
@@ -814,6 +816,7 @@ class MSDraftEmail(BaseTool):
 
         except Exception as e:
             #traceback.print_exc()
+            self.return_direct = False
             tb = traceback.format_exc()
             publish_error(e, tb)
             return tool_error(e, tb, self.description)

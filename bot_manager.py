@@ -7,7 +7,7 @@ import bot_logging
 from bot_comms import from_dispatcher, send_to_dispatcher, send_to_user, clear_queue, send_to_instance, send_credentials_to_instance
 
 
-bot_logger = bot_logging.logging.getLogger('BotManager')
+bot_logger = bot_logging.logging.getLogger('O365-BOT-MANAGER')
 bot_logger.addHandler(bot_logging.file_handler)
 "This module handles sending and recieving between server and bots"
 
